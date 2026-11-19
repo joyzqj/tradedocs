@@ -6,6 +6,9 @@ v1.1 新增**本地智能填单**：粘贴邮件/订单文字，或上传 TXT、
 
 > 打开即用，不需要安装、不需要服务器、不需要登录，也不会上传任何业务数据。
 
+> **在线使用**：<https://joyzqj.github.io/tradedocs/> · **源码仓库**：<https://github.com/joyzqj/tradedocs>  
+> 也可以下载仓库中的单文件版 `dist/单证通-外贸单证系统.html` 离线使用。
+
 ![仪表盘](screenshots/dashboard.png)
 
 ---
