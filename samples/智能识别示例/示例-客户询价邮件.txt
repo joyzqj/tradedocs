@@ -1,0 +1,23 @@
+From: Olivia Brown <sourcing@pacificrim-imports.example>
+Buyer: PACIFIC RIM IMPORTS LLC
+Country: AUSTRALIA
+Contact: Olivia Brown
+Tel: +61 2 5550 1188
+Subject: New inquiry - ceramic mugs and tote bags
+
+Hi Emily,
+
+We are PACIFIC RIM IMPORTS LLC from Sydney, Australia. Please quote CIF Sydney:
+- Ceramic Mug 12 oz: 2,400 PCS
+- Cotton Canvas Tote Bag: 5,000 PCS
+
+Target shipment:
+ETD: 2026-12-18
+ETA: 2027-01-05.
+Payment: T/T 30% deposit, balance against copy of B/L.
+Port of Loading: Shanghai, China
+
+Please quote our order number PR-2026-0418 on all documents.
+
+Best regards,
+Olivia Brown

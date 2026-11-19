@@ -1,0 +1,22 @@
+COMMERCIAL INVOICE
+Invoice No.: CI-2026-0188      Date: 2026-11-17
+Order No.: SO-2026-0118        Contract No.: SC-2026-0042
+Buyer: PACIFIC TRADING CO., LTD.
+88 Ocean Avenue, Suite 500
+San Francisco, CA 94110
+United States
+Contact: Jane Smith    Tel: +1 415 555 0123    Email: jane@pacifictrading.example
+Payment: T/T 30% DEPOSIT, BALANCE AGAINST COPY OF B/L
+Incoterm: FOB    Currency: USD
+Port of Loading: SHANGHAI, CHINA    Port of Discharge: OAKLAND, USA
+Country of Destination: UNITED STATES
+Vessel: PACIFIC STAR    Voyage: 118W
+ETD: 2026-12-05        ETA: 2026-12-19
+L/C No.: LC26USA1234
+Shipping Marks: PACIFIC TRADING
+Items:
+Ceramic Mug 12 oz      6912.00.00    2,400   PCS   1.85   4,440.00
+Bamboo Cutting Board   4419.19.00    1,200   SET   6.40   7,680.00
+Freight: USD 2,150.00
+Insurance: USD 340.00
+Remarks: Handle with care.

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="单证通 TradeDocs —— 免部署的外贸单证工作台。订单数据一次录入，自动生成商业发票、装箱单等 12 类单证，一键打印或导出 PDF。">
+  <title>单证通 TradeDocs · 外贸单证工作台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b2239'/%3E%3Cpath d='M8 20c2.5-2.5 4.5-2.5 7 0s4.5 2.5 7 0' stroke='%232dd4bf' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='12' r='4.2' fill='%23f59e0b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="主导航">
+      <a class="brand" href="#/dashboard" aria-label="单证通 TradeDocs 首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M4 15.2c1.9-1.8 3.6-1.8 5.5 0s3.6 1.8 5.5 0 3.6-1.8 5.5 0" stroke="#2dd4bf" stroke-width="1.8" stroke-linecap="round"></path>
+            <circle cx="12" cy="8.4" r="3.1" fill="#f59e0b"></circle>
+            <path d="M12 3.4v1.6M7.4 6.4l1.1 1.1M16.6 6.4l-1.1 1.1" stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round"></path>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>单证通</strong>
+          <span>TRADEDOCS</span>
+        </span>
+      </a>
+      <nav class="nav" aria-label="功能导航">
+        <div class="nav-section">工作台</div>
+        <a class="nav-item" href="#/dashboard" data-nav="dashboard">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+          <span>仪表盘</span>
+        </a>
+        <a class="nav-item" href="#/orders" data-nav="orders">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8M8 17h5"></path></svg>
+          <span>订单管理</span>
+        </a>
+        <div class="nav-section">资料库</div>
+        <a class="nav-item" href="#/customers" data-nav="customers">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>客户管理</span>
+        </a>
+        <a class="nav-item" href="#/products" data-nav="products">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"></path></svg>
+          <span>产品库</span>
+        </a>
+        <div class="nav-section">系统</div>
+        <a class="nav-item" href="#/settings" data-nav="settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path><path d="M1 14h6M9 8h6M17 16h6"></path></svg>
+          <span>设置</span>
+        </a>
+        <a class="nav-item" href="#/help" data-nav="help">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+          <span>使用说明</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="sidebar-note">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <span>本地优先 · 数据不出电脑</span>
+        </div>
+        <div class="sidebar-version">v1.1.0 · localStorage</div>
+      </div>
+    </aside>
+
+    <div class="app-frame">
+      <header class="topbar">
+        <button class="icon-btn menu-toggle" type="button" data-action="toggle-sidebar" aria-label="打开导航菜单" aria-controls="sidebar" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+        </button>
+        <div class="topbar-title">
+          <div class="crumbs" id="crumbs">工作台</div>
+          <h1 class="topbar-heading" id="page-title">仪表盘</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="save-state" id="save-state" data-state="saved" title="数据保存在本机浏览器 localStorage">
+            <span class="save-state-dot" aria-hidden="true"></span>
+            <span id="save-state-text">已就绪</span>
+          </span>
+          <a class="icon-btn topbar-help" href="#/help" data-nav="help" aria-label="使用说明" title="使用说明">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+          </a>
+          <button class="btn btn--primary btn-new-order" type="button" data-testid="new-order" data-action="new-order">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            <span class="btn-label">新建订单</span>
+          </button>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <div class="sidebar-backdrop no-print" id="sidebar-backdrop" hidden></div>
+
+  <main class="view" id="view" tabindex="-1">
+    <div class="view-inner" id="view-inner">
+      <div class="boot-state" role="status">
+        <span class="boot-spinner" aria-hidden="true"></span>
+        <p>正在加载工作台…</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+  <div id="modal-root"></div>
+
+  <noscript>
+    <div class="noscript">单证通需要启用 JavaScript 才能使用，请在浏览器设置中开启后刷新页面。</div>
+  </noscript>
+
+  <script src="js/core.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/recognize.js"></script>
+  <script src="js/doc-templates.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

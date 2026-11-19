@@ -1,0 +1,38 @@
+{
+  "invoiceNo": "CI-2026-0188",
+  "date": "2026-11-17",
+  "buyer": {
+    "nameEn": "PACIFIC TRADING CO., LTD.",
+    "addressEn": "88 Ocean Avenue, Suite 500\nSan Francisco, CA 94110\nUnited States",
+    "country": "UNITED STATES",
+    "contact": "Jane Smith",
+    "tel": "+1 415 555 0123",
+    "email": "jane@pacifictrading.example"
+  },
+  "incoterm": "FOB",
+  "currency": "USD",
+  "portOfLoading": "SHANGHAI, CHINA",
+  "portOfDischarge": "OAKLAND, USA",
+  "vessel": "PACIFIC STAR",
+  "voyage": "118W",
+  "etd": "2026-12-05",
+  "eta": "2026-12-19",
+  "items": [
+    {
+      "nameEn": "Ceramic Mug 12 oz",
+      "hsCode": "6912.00.00",
+      "qty": 2400,
+      "unit": "PCS",
+      "unitPrice": 1.85,
+      "amount": 4440.0
+    },
+    {
+      "nameEn": "Bamboo Cutting Board Set",
+      "hsCode": "4419.19.00",
+      "qty": 1200,
+      "unit": "SET",
+      "unitPrice": 6.4,
+      "amount": 7680.0
+    }
+  ]
+}
