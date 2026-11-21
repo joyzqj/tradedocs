@@ -2131,3 +2131,649 @@
 
 /* CO table inside a box: compact cell padding */
 .doc-co-body .doc-table { margin-bottom: 0; }
+
+/* ================================================================== */
+/*  24. Visual refinement — Chinese-formal centered letterhead,        */
+/*      unified typography & quiet module rhythm (task-12)             */
+/* ================================================================== */
+
+/* ---- design tokens: monochrome, warm hairlines, graphite accents --- */
+.doc-sheet {
+  --doc-ink: #1f2430;
+  --doc-ink-soft: #3b4250;
+  --doc-muted: #7a8290;
+  --doc-line: #c7ccd4;
+  --doc-line-soft: #dfe3e8;
+  --doc-navy: #16233a;
+  --doc-rule: #263043;
+  --doc-paper-tint: #f6f7f5;
+  font-family: Arial, "Helvetica Neue", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 8.3pt;
+  line-height: 1.42;
+}
+
+/* ---- centered letterhead ------------------------------------------ */
+.doc-letterhead {
+  text-align: center;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 2.5mm;
+}
+
+.doc-letterhead-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.9mm;
+  width: 8mm;
+  height: 8mm;
+}
+
+.doc-logo-img {
+  width: 8mm;
+  height: 8mm;
+  object-fit: contain;
+}
+
+.doc-letterhead-names {
+  display: block;
+}
+
+.doc-company-name {
+  margin: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+  font-size: 13pt;
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: 0.1em;
+  text-indent: 0.1em;
+  color: var(--doc-navy);
+}
+
+.doc-company-name--en {
+  font-size: 12pt;
+  letter-spacing: 0.05em;
+  text-indent: 0.05em;
+  text-transform: uppercase;
+}
+
+.doc-company-name-en {
+  margin-top: 0.5mm;
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-size: 8.3pt;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.doc-company-addr {
+  margin-top: 1mm;
+  font-size: 7.2pt;
+  line-height: 1.42;
+  color: #59616e;
+  letter-spacing: 0.01em;
+}
+
+.doc-company-meta {
+  margin-top: 0.4mm;
+  font-size: 7pt;
+  line-height: 1.38;
+  color: #6b7280;
+  letter-spacing: 0.015em;
+}
+
+/* refined double hairline closing the letterhead */
+.doc-letterhead-rule {
+  width: 100%;
+  height: 0;
+  margin-top: 1.4mm;
+  border-top: 0.7pt solid #8f98a5;
+  border-bottom: 0.35pt solid var(--doc-line);
+  padding-top: 0.7mm;
+}
+
+/* Chinese-primary documents: slightly taller Chinese leading */
+.doc-sheet[data-doc="cd"],
+.doc-sheet[data-doc="cs"] {
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* ---- title block: Songti serif, tracked, short double accent rule -- */
+.doc-title-block {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 2.6mm;
+  text-align: center;
+}
+
+.doc-title {
+  font-family: "Songti SC", SimSun, "Noto Serif SC", Georgia, "Times New Roman", serif;
+  font-size: 15.5pt;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: var(--doc-navy);
+}
+
+.doc-title--zh {
+  font-family: "Songti SC", SimSun, "Noto Serif SC", "Microsoft YaHei", serif;
+  font-size: 15.5pt;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+}
+
+.doc-title-cn {
+  margin-top: 0.8mm;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 9.4pt;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  color: #4b5563;
+}
+
+.doc-title-sub {
+  margin-top: 0.8mm;
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-size: 8.2pt;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: var(--doc-muted);
+}
+
+.doc-title-block::after {
+  content: "";
+  display: block;
+  width: 18mm;
+  height: 0.7mm;
+  margin: 1.3mm auto 0;
+  border-top: 1pt solid var(--doc-rule);
+  border-bottom: 0.35pt solid var(--doc-line);
+}
+
+/* ---- meta / detail grids: airier cells, warm hairlines ------------- */
+.doc-meta-grid,
+.doc-details {
+  border-left: 0.5pt solid var(--doc-line);
+  border-top: 0.5pt solid var(--doc-line);
+  margin-bottom: 2.5mm;
+}
+
+.doc-meta-item,
+.doc-field {
+  border-right: 0.5pt solid var(--doc-line);
+  border-bottom: 0.5pt solid var(--doc-line);
+}
+
+.doc-meta-item {
+  min-height: 8mm;
+  padding: 1mm 1.9mm 1.1mm;
+}
+
+.doc-meta-label,
+.doc-field-label {
+  font-size: 6.5pt;
+  letter-spacing: 0.06em;
+  color: var(--doc-muted);
+}
+
+.doc-meta-value {
+  margin-top: 0.55mm;
+  font-size: 8.3pt;
+  line-height: 1.34;
+  color: var(--doc-ink);
+}
+
+.doc-field {
+  min-height: 7.6mm;
+  padding: 0.9mm 1.9mm 1mm;
+}
+
+.doc-field-value {
+  margin-top: 0.5mm;
+  font-size: 8.2pt;
+  line-height: 1.36;
+  color: var(--doc-ink);
+}
+
+/* ---- party cards --------------------------------------------------- */
+.doc-parties {
+  gap: 2.4mm;
+  margin-bottom: 2.5mm;
+}
+
+.doc-party {
+  padding: 1.5mm 2mm;
+  min-height: 17mm;
+  border: 0.5pt solid var(--doc-line);
+}
+
+.doc-party-title {
+  padding-bottom: 0.8mm;
+  margin-bottom: 1mm;
+  border-bottom: 0.4pt solid var(--doc-line-soft);
+  font-size: 6.5pt;
+  letter-spacing: 0.1em;
+  color: var(--doc-navy);
+}
+
+.doc-party-name {
+  font-size: 8.8pt;
+  font-weight: 700;
+  line-height: 1.36;
+}
+
+.doc-party-name-cn {
+  font-size: 8.2pt;
+  line-height: 1.4;
+}
+
+.doc-party-line {
+  margin-top: 0.4mm;
+  font-size: 7.2pt;
+  line-height: 1.4;
+  color: var(--doc-ink-soft);
+}
+
+.doc-party-text {
+  font-size: 8.4pt;
+  line-height: 1.4;
+}
+
+/* ---- section headings: quiet left accent + hairline ---------------- */
+.doc-section-title {
+  padding: 0 0 0.8mm 1.6mm;
+  margin: 0 0 1.8mm;
+  border-left: 1.2pt solid var(--doc-rule);
+  border-bottom: 0.5pt solid var(--doc-line);
+  font-size: 7.1pt;
+  letter-spacing: 0.13em;
+  color: var(--doc-navy);
+}
+
+.doc-block-title {
+  margin-bottom: 0.8mm;
+  font-size: 6.5pt;
+  letter-spacing: 0.09em;
+  color: var(--doc-navy);
+}
+
+/* ---- tables: warm light header, hairline grid, calmer borders ------ */
+.doc-table {
+  margin-bottom: 2.5mm;
+  font-size: 8.1pt;
+}
+
+.doc-table th,
+.doc-table td {
+  padding: 0.82mm 1.35mm;
+  border: 0.5pt solid var(--doc-line);
+  line-height: 1.34;
+}
+
+.doc-table thead th {
+  background: var(--doc-paper-tint);
+  border-bottom: 0.8pt solid #9aa3af;
+  font-size: 6.8pt;
+  letter-spacing: 0.05em;
+  color: #3b4250;
+}
+
+.doc-table tbody td {
+  font-size: 8.1pt;
+  color: var(--doc-ink-soft);
+}
+
+.doc-table tfoot td,
+.doc-table tfoot th {
+  border-top: 0.8pt solid #9aa3af;
+  background: var(--doc-paper-tint);
+}
+
+.doc-item-name {
+  font-size: 8.1pt;
+  line-height: 1.34;
+  color: var(--doc-ink);
+}
+
+.doc-item-code,
+.doc-item-spec {
+  font-size: 6.6pt;
+  color: var(--doc-muted);
+}
+
+/* totals: clearly emphasized, double graphite rule */
+.doc-table--totals th {
+  padding: 0.8mm 2mm 0.8mm 0;
+  border-bottom: 0.4pt dotted var(--doc-line);
+  background: transparent;
+  font-size: 6.9pt;
+  letter-spacing: 0.05em;
+  color: var(--doc-muted);
+}
+
+.doc-table--totals td {
+  padding: 0.8mm 0;
+  border-bottom: 0.4pt dotted var(--doc-line);
+  font-size: 8.3pt;
+  color: var(--doc-ink);
+}
+
+.doc-table--totals .doc-totals-strong th,
+.doc-table--totals .doc-totals-strong td {
+  padding-top: 1.2mm;
+  padding-bottom: 1.2mm;
+  border-top: 0.9pt solid var(--doc-rule);
+  border-bottom: 0.9pt solid var(--doc-rule);
+  font-size: 9.4pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--doc-navy);
+}
+
+/* ---- cards: marks / notes / remarks / declaration / bank ----------- */
+.doc-marks,
+.doc-note,
+.doc-remarks,
+.doc-docs,
+.doc-declaration,
+.doc-bank {
+  border: 0.5pt solid var(--doc-line);
+  padding: 1.5mm 2mm;
+}
+
+.doc-marks-body,
+.doc-note-body,
+.doc-remarks-body,
+.doc-declaration-body {
+  font-size: 7.4pt;
+  line-height: 1.44;
+  color: var(--doc-ink-soft);
+}
+
+.doc-declaration-body {
+  font-size: 7.2pt;
+  line-height: 1.5;
+}
+
+.doc-bank {
+  margin-bottom: 2.5mm;
+}
+
+.doc-bank-item {
+  font-size: 7.4pt;
+  line-height: 1.4;
+}
+
+.doc-bank-label {
+  min-width: 21mm;
+  font-size: 6.4pt;
+  letter-spacing: 0.04em;
+}
+
+.doc-bank-value {
+  font-size: 7.9pt;
+  font-weight: 600;
+  color: var(--doc-ink);
+}
+
+/* ---- summary: emphasized words block + totals ---------------------- */
+.doc-summary {
+  gap: 2.8mm;
+  margin-bottom: 2.5mm;
+}
+
+.doc-summary-words {
+  padding: 1.5mm 2.2mm 1.5mm 0;
+  border: 0;
+  border-left: 1.4pt solid var(--doc-rule);
+  background: transparent;
+}
+
+.doc-amount-words-label {
+  font-size: 6.5pt;
+  letter-spacing: 0.08em;
+  color: var(--doc-muted);
+}
+
+.doc-amount-words-value {
+  margin-top: 0.7mm;
+  font-size: 8.9pt;
+  line-height: 1.42;
+  letter-spacing: 0.01em;
+  color: var(--doc-navy);
+}
+
+.doc-amount-words-cn {
+  margin-top: 0.5mm;
+  font-size: 8pt;
+  line-height: 1.5;
+}
+
+.doc-summary-totals {
+  padding: 1.2mm 2mm;
+  border: 0.5pt solid var(--doc-line);
+  background: transparent;
+}
+
+/* ---- signature / stamp: calm and aligned --------------------------- */
+.doc-sign-caption {
+  font-size: 6.5pt;
+  letter-spacing: 0.06em;
+  color: var(--doc-ink-soft);
+}
+
+.doc-sign-company {
+  font-size: 8pt;
+  line-height: 1.4;
+}
+
+.doc-sign-name {
+  font-size: 8pt;
+  line-height: 1.4;
+}
+
+.doc-sign-line {
+  height: 6.5mm;
+  margin-top: 4.5mm;
+  border-bottom: 0.5pt solid #59616e;
+}
+
+.doc-sign-date-line {
+  font-size: 6.8pt;
+  color: var(--doc-ink-soft);
+}
+
+.doc-stamp-caption {
+  font-size: 6.2pt;
+  color: var(--doc-muted);
+}
+
+.doc-stamp-slot {
+  border: 0.4pt dashed #b8bfc9;
+}
+
+/* ---- footer: balanced hairline row --------------------------------- */
+.doc-footer {
+  padding-top: 1.4mm;
+  border-top: 0.5pt solid var(--doc-line);
+  font-size: 6.8pt;
+  letter-spacing: 0.03em;
+  color: var(--doc-muted);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 3mm;
+}
+
+.doc-footer-company {
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.doc-footer-doc {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.doc-footer-page {
+  text-align: right;
+}
+
+/* ---- Chinese internal sheets: warm airy rhythm --------------------- */
+.doc-sheet[data-doc="cd"] .doc-table td,
+.doc-sheet[data-doc="cs"] .doc-table td {
+  line-height: 1.45;
+}
+
+.doc-sheet[data-doc="cd"] .doc-check-item,
+.doc-sheet[data-doc="cs"] .doc-check-item {
+  line-height: 1.5;
+}
+
+.doc-sheet[data-doc="cd"] .doc-party-line,
+.doc-sheet[data-doc="cs"] .doc-party-line {
+  line-height: 1.5;
+}
+
+.doc-internal {
+  margin: 0 auto 2.4mm;
+  padding: 0.9mm 4.5mm;
+  border: 0.8pt solid #9b3a3a;
+  color: #8a2f2f;
+  letter-spacing: 0.2em;
+}
+
+/* ---- print page margins: keep A4 but trim outer margin ------------- */
+@media print {
+  .doc-page {
+    min-height: 295mm !important;
+    padding: 10mm 14mm 8mm !important;
+  }
+}
+
+/* ---- 24b. fit tuning: absorb the larger header/title, keep 1 page ---- */
+.doc-letterhead { margin-bottom: 2.2mm; }
+.doc-letterhead-logo { width: 7mm; height: 7mm; margin-bottom: 0.6mm; }
+.doc-logo-img { width: 7mm; height: 7mm; }
+.doc-company-name { font-size: 12.9pt; line-height: 1.18; }
+.doc-company-name-en { margin-top: 0.35mm; font-size: 8.2pt; }
+.doc-company-addr { margin-top: 0.75mm; font-size: 7.1pt; line-height: 1.38; }
+.doc-company-meta { margin-top: 0.3mm; font-size: 6.9pt; }
+.doc-letterhead-rule { margin-top: 1.1mm; padding-top: 0.6mm; }
+.doc-title-block { margin-bottom: 2.3mm; }
+.doc-title { font-size: 15pt; }
+.doc-title--zh { font-size: 15pt; }
+.doc-title-cn { margin-top: 0.6mm; }
+.doc-title-block::after { margin: 1mm auto 0; }
+.doc-meta-item { min-height: 7.5mm; padding: 0.8mm 1.7mm 0.9mm; }
+.doc-field { min-height: 7.1mm; padding: 0.8mm 1.7mm 0.9mm; }
+.doc-party { padding: 1.25mm 1.7mm; min-height: 15.5mm; }
+.doc-party-line { line-height: 1.34; }
+.doc-party-name { font-size: 8.6pt; }
+.doc-table th,
+.doc-table td { padding: 0.7mm 1.25mm; }
+.doc-table { margin-bottom: 2.3mm; }
+.doc-section-title { margin-bottom: 1.5mm; padding-bottom: 0.6mm; }
+.doc-marks,
+.doc-note,
+.doc-remarks,
+.doc-docs,
+.doc-declaration,
+.doc-bank { padding: 1.3mm 1.8mm; }
+.doc-summary-words { padding: 1.2mm 2mm 1.2mm 0; }
+.doc-summary-totals { padding: 1mm 1.8mm; }
+.doc-table--totals .doc-totals-strong th,
+.doc-table--totals .doc-totals-strong td {
+  padding-top: 1mm;
+  padding-bottom: 1mm;
+}
+.doc-footer { padding-top: 1.2mm; }
+
+/* CS / CD tailored trims (three stacked tables) */
+.doc-sheet[data-doc="cs"] .doc-stats { gap: 2mm; margin-bottom: 2mm; }
+.doc-sheet[data-doc="cs"] .doc-stat { padding: 1.1mm 2mm; }
+.doc-sheet[data-doc="cs"] .doc-bottom { margin-bottom: 1.8mm; }
+.doc-sheet[data-doc="cd"] .doc-checks { gap: 1.2mm 4mm; padding: 1.2mm 2mm; }
+.doc-sheet[data-doc="cd"] .doc-check-group-title { padding-bottom: 0.5mm; margin-bottom: 0.5mm; }
+
+/* ---- 24c. final fit: keep every sheet at exactly A4 on screen ------- */
+.doc-table th,
+.doc-table td { padding: 0.6mm 1.2mm; }
+.doc-meta-item { min-height: 7.2mm; }
+.doc-letterhead { margin-bottom: 2mm; }
+.doc-company-addr { margin-top: 0.65mm; }
+.doc-letterhead-rule { margin-top: 1mm; }
+.doc-title-block { margin-bottom: 2.1mm; }
+.doc-title-block::after { margin-top: 0.9mm; }
+.doc-summary-words { padding: 1mm 1.8mm 1mm 0; }
+.doc-summary-totals { padding: 0.9mm 1.7mm; }
+.doc-table--totals th { padding: 0.7mm 2mm 0.7mm 0; }
+.doc-table--totals td { padding: 0.7mm 0; }
+.doc-table--totals .doc-totals-strong th,
+.doc-table--totals .doc-totals-strong td {
+  padding-top: 0.85mm;
+  padding-bottom: 0.85mm;
+}
+.doc-stamp-slot { height: 23mm; }
+.doc-seal { max-height: 21mm; max-width: 24mm; }
+.doc-bottom--cd .doc-stamp-slot { height: 20mm; }
+.doc-bottom--cd .doc-seal { max-height: 18mm; max-width: 21mm; }
+
+/* PI is the densest invoice variant — reclaim a few px */
+.doc-sheet[data-doc="pi"] .doc-parties,
+.doc-sheet[data-doc="pi"] .doc-details,
+.doc-sheet[data-doc="pi"] .doc-duo,
+.doc-sheet[data-doc="pi"] .doc-summary,
+.doc-sheet[data-doc="pi"] .doc-bank { margin-bottom: 2.1mm; }
+.doc-sheet[data-doc="pi"] .doc-party-line { line-height: 1.3; }
+
+/* ---- 24d. bilingual compaction: two-row bilingual labels stay 1 page */
+.doc-sheet--bilingual .doc-page { padding: 11mm 14mm 9mm; }
+
+@media print {
+  .doc-sheet--bilingual .doc-page { padding: 9mm 14mm 7mm !important; }
+}
+
+.doc-sheet--bilingual .doc-letterhead { margin-bottom: 1.8mm; }
+.doc-sheet--bilingual .doc-company-addr { margin-top: 0.5mm; }
+.doc-sheet--bilingual .doc-letterhead-rule { margin-top: 0.8mm; padding-top: 0.4mm; }
+.doc-sheet--bilingual .doc-title-block { margin-bottom: 1.9mm; }
+.doc-sheet--bilingual .doc-title-cn { margin-top: 0.35mm; font-size: 9pt; }
+.doc-sheet--bilingual .doc-meta-item { min-height: 6.8mm; padding: 0.7mm 1.6mm 0.8mm; }
+.doc-sheet--bilingual .doc-field { min-height: 6.6mm; padding: 0.7mm 1.6mm 0.8mm; }
+.doc-sheet--bilingual .doc-party { padding: 1.1mm 1.6mm; }
+.doc-sheet--bilingual .doc-parties,
+.doc-sheet--bilingual .doc-details,
+.doc-sheet--bilingual .doc-duo { margin-bottom: 2.1mm; }
+.doc-sheet--bilingual .doc-table th,
+.doc-sheet--bilingual .doc-table td { padding: 0.5mm 1.1mm; }
+.doc-sheet--bilingual .doc-summary { margin-bottom: 2.1mm; }
+.doc-sheet--bilingual .doc-bottom { margin-bottom: 1.8mm; }
+.doc-sheet--bilingual .doc-amount-words-cn { font-size: 7.6pt; line-height: 1.35; }
+.doc-sheet--bilingual .doc-table thead th { font-size: 6.5pt; }
+
+/* PI bilingual: densest sheet — slightly tighter technical blocks */
+.doc-sheet--bilingual[data-doc="pi"] .doc-meta-item { min-height: 6.4mm; padding: 0.6mm 1.5mm 0.7mm; }
+.doc-sheet--bilingual[data-doc="pi"] .doc-marks-body { font-size: 7pt; line-height: 1.3; }
+.doc-sheet--bilingual[data-doc="pi"] .doc-bank-item { font-size: 7.2pt; line-height: 1.3; }
+.doc-sheet--bilingual[data-doc="pi"] .doc-bank-value { font-size: 7.6pt; }
+.doc-sheet--bilingual[data-doc="pi"] .doc-summary-totals { padding: 0.8mm 1.6mm; }
+.doc-sheet--bilingual[data-doc="pi"] .doc-bottom { margin-bottom: 1.2mm; }
+
+@media print {
+  .doc-sheet--bilingual[data-doc="pi"] .doc-page { padding: 8.5mm 14mm 6.5mm !important; }
+}
+
+/* PI default: marks block is the tallest duo cell — tighten it slightly */
+.doc-sheet[data-doc="pi"] .doc-marks-body { font-size: 7.1pt; line-height: 1.34; }
+.doc-sheet[data-doc="pi"] .doc-bottom { margin-bottom: 1.9mm; }
+

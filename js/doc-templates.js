@@ -276,24 +276,22 @@
   function letterhead(p) {
     var co = p.company || {};
     var logo = hasText(co.logo)
-      ? '<img class="doc-logo-img" alt="" src="' + esc(p, co.logo) + '">'
+      ? '<div class="doc-letterhead-logo"><img class="doc-logo-img" alt="" src="' + esc(p, co.logo) + '"></div>'
       : '';
-    var nameEn = txt(co.nameEn);
     var nameCn = txt(co.nameCn);
+    var nameEn = txt(co.nameEn);
     var names = [];
-    if (p.chinese) {
-      if (hasText(nameCn)) names.push('<div class="doc-company-name doc-company-name--zh">' + esc(p, nameCn) + '</div>');
+    if (hasText(nameCn)) {
+      names.push('<div class="doc-company-name doc-company-name--zh">' + esc(p, nameCn) + '</div>');
       if (hasText(nameEn)) names.push('<div class="doc-company-name-en">' + esc(p, nameEn) + '</div>');
-    } else {
-      if (hasText(nameEn)) names.push('<div class="doc-company-name">' + esc(p, nameEn) + '</div>');
-      if (hasText(nameCn)) names.push('<div class="doc-company-name-cn">' + esc(p, nameCn) + '</div>');
+    } else if (hasText(nameEn)) {
+      names.push('<div class="doc-company-name doc-company-name--en">' + esc(p, nameEn) + '</div>');
     }
     var addr = p.chinese
       ? (txt(co.addressCn) || txt(co.addressEn))
       : (txt(co.addressEn) || txt(co.addressCn));
     if (!hasText(addr)) {
-      var city = [txt(co.city), txt(co.country)].filter(hasText).join(', ');
-      addr = city;
+      addr = [txt(co.city), txt(co.country)].filter(hasText).join(', ');
     }
     var contactBits = [];
     if (hasText(co.tel)) contactBits.push('TEL ' + txt(co.tel));
@@ -307,10 +305,11 @@
       ? '<div class="doc-company-addr doc-pre">' + esc(p, addr) + '</div>'
       : '';
     return '<header class="doc-letterhead">' +
-      '<div class="doc-letterhead-brand">' +
-        logo +
-        '<div class="doc-letterhead-text">' + names.join('') + addrHtml + contact + '</div>' +
-      '</div>' +
+      logo +
+      '<div class="doc-letterhead-names">' + names.join('') + '</div>' +
+      addrHtml +
+      contact +
+      '<div class="doc-letterhead-rule" aria-hidden="true"></div>' +
       '</header>';
   }
 
@@ -885,8 +884,8 @@
 
   function deliveryText(p) {
     var etd = dateText(p, p.order.etd);
-    if (hasText(etd)) return 'ON OR ABOUT ' + etd + ', SUBJECT TO ORDER CONFIRMATION AND RECEIPT OF THE DOWN PAYMENT.';
-    return 'WITHIN 30 DAYS AFTER RECEIPT OF THE DOWN PAYMENT AND CONFIRMED ORDER.';
+    if (hasText(etd)) return 'ON OR ABOUT ' + etd + ', SUBJECT TO ORDER CONFIRMATION.';
+    return 'WITHIN 30 DAYS AFTER RECEIPT OF THE DOWN PAYMENT.';
   }
 
   function renderPI(p) {

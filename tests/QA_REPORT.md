@@ -1,9 +1,9 @@
 # TradeDocs — QA Report
 
-**Owner:** qa · **Last updated:** 2026-11-20 01:35 (+08:00) — **v1.1 FINAL after S3 fixes: all gates green** (QA-R01/QA-R02 fixed & re-verified)
+**Owner:** qa · **Last updated:** 2026-11-22 01:45 (+08:00) — **v1.1.1 DESIGN PASS FINAL: all gates green, no open findings**
 **Project:** `trade-docs`（relative paths below；测试报告随源码发布）
 **Environment:** Windows · Node v24.17.0 · Chrome 157.0.8103.79 (`C:\Program Files\Google\Chrome\Application\chrome.exe`) · zero npm/external dependencies
-**v1.1 frozen snapshot (post task-10):** `js/recognize.js` 133,124 B @01:09:13 SHA `234825A3…` · `js/app.js` 207,160 B @01:26:22 SHA `A4A06D98…` · `index.html` SHA `C80CD4EC…` · `css/app.css` SHA `318FB049…` · `css/print.css` SHA `D7A328EB…` (unchanged) · `js/doc-templates.js` SHA `CA4697EC…` · `js/store.js` `DBA0B63B…` · `js/core.js` `81485892…` · `js/demo.js` `74C8CDC4…`
+**v1.1.1 frozen snapshot (design pass + version bump):** `js/doc-templates.js` 89,682 B @01:14:57 SHA `A6A75B2C…` · `css/print.css` 63,023 B @01:11:41 SHA `F351646D…` · `js/app.js` 207,160 B @01:17:37 SHA `D9D76ED3…` (visible app version 1.1.1) · `index.html` SHA `AF8727AD…` (v1.1.1) · `README.md` SHA `67E65C83…` (v1.1.1) · `js/recognize.js` 133,124 B @01:09:13 SHA `234825A3…` (engine version stays 1.1.0, intentional) · `css/app.css` SHA `318FB049…` · `js/store.js` `DBA0B63B…` · `js/core.js` `81485892…` · `js/demo.js` `74C8CDC4…`
 
 Severity legend: **S1 blocker** · **S2 major** · **S3 minor** · **S4 low/edge** · **INFO** (no action required).
 Status legend: ✅ PASS · 🔧 fixed & re-verified · ⚠️ open (none remaining)
@@ -212,3 +212,58 @@ node tests/e2e.mjs --full         # PASS 56/56 (42 v1.0 regression + 14 v1.1 rec
 ```
 
 QA never edits application files; v1.1 findings were reported to ui-dev/Lead with file, line, repro and evidence and re-tested after the task-10 fix (green). Recognized results are always reviewed/edited before applying (contract §13.1); no network requests are made by the recognition engine.
+
+---
+
+# v1.1.1 — DOCUMENT DESIGN PASS (visual QA) — FINAL
+
+**Run window:** 2026-11-22 01:20–01:45 (+08:00) · fresh Chrome profile · files frozen per Lead (print.css + doc-templates redesign; app/index/README version bump to 1.1.1; recognize.version stays 1.1.0 intentionally).
+
+## Results — all green
+
+| Gate | Command | Result |
+|---|---|---|
+| Template unit (12 docs) | `node tests/test-templates.mjs` | ✅ PASS `47/47`, exit 0 |
+| Core unit (regression) | `node tests/test-core.mjs` | ✅ PASS `119/119`, exit 0 |
+| Recognition unit (regression) | `node tests/test-recognize.mjs` | ✅ PASS `48/48`, exit 0 |
+| CDP harness self-check | `node tests/e2e.mjs --selfcheck` | ✅ PASS `13/13`, exit 0 |
+| Full integrated E2E (42 v1.0 + 14 v1.1) | `node tests/e2e.mjs --full` | ✅ **PASS 56/56**, exit 0 |
+| Artifact verification | `.scratch/qa/verify-artifacts.mjs` | ✅ 18 files (15 PNG + 3 PDF), 0 failures |
+
+Print matrix on redesigned CSS: `ci/pl/pi/qt/bk/sa/cd/co/bc/dr/cs = 1 page @1115px, sc = 2 pages @2230px`; selected demo set (CI,PL,SC,CO) = **5 pages**; all-12 = **13 pages**; no trailing blank. Zero console errors/page exceptions; 219 requests all same-origin/`data:`; file-provenance check stable. Raw log: `.scratch/qa/e2e-full-v111-output.txt`.
+
+## Independent visual audit (12 docs + SC both pages + bilingual CI)
+
+Captured full-sheet renders at 1440 (screen media) and print-emulated default-language samples (CI, PL, SC p1/p2, BK, CS): `.scratch/qa/redesign-audit/` (20 PNGs + `audit.json`). Measured layout: every single-page sheet **794×1123 px screen / 794×1115 px print**, SC **2 pages (2245 / 2230 px)**, `scrollWidth == clientWidth == 794` for all docs (no horizontal clipping).
+
+Verified against the design brief:
+- **Centered Chinese-formal letterhead** — logo centered above; Chinese company name primary (bold), English secondary; address/contact centered with `·` separators; double hairline rule. Consistent on all 12 docs.
+- **Refined typography** — Songti/SimSun/Georgia serif titles with letter-spacing; body/table/label hierarchy applied consistently; bilingual CI labels readable.
+- **Quiet monochrome modules** — warm-gray table headers, light hairline grids, no heavy fills; amount-words block and grand total emphasized; seals remain the only red accent (plus the intentional CD/CS “内部资料” warning box).
+- **Balanced footer** — company/type/page line at page bottom on every doc; SC page 2 has a proper running header (`SALES CONTRACT NO. … — CONTINUED` + 合同条款), starts cleanly with “TERMS AND CONDITIONS” (no orphan heading), and both signature blocks + seal are complete.
+- **Seals/signatures** — present and correctly placed on CI/PL/PI/SC/CO/BC/DR/SA/CD/CS; no clipped or overlapping stamps or text.
+- **Chinese legibility** — company names, bilingual labels and Chinese-primary docs (CD/CS) render cleanly at print scale.
+- **Pagination** — print margins (10/8mm) preserve the expected 11×1 + SC×2 = 13-page matrix; no blank pages; bilingual CI still fits one A4.
+
+**Findings: none.** No S1/S2/S3 defects found in the redesign. Two INFO observations only (no action): content-short docs (PL/QT/SA/BC/DR/CO) keep natural lower whitespace above the balanced footer (DR's endorsement/payer blocks are intentionally open), and bilingual CI item 3/5 Chinese names wrap to two lines without clipping or page overflow.
+
+## Deliverable screenshots (18 files, refreshed & verified)
+
+`dashboard.png`, `settings.png`, `order-editor.png`, `preview-ci.png`, `preview-pl.png`, `preview-sc.png`, `preview-cs.png`, **`preview-co.png`**, **`preview-cd.png`**, **`preview-ci-bilingual.png`**, `mobile-dashboard.png`, `recognize-source/result/applied/mobile.png`, `preview-selected-demo.pdf` (**5 pages**), `preview-sc-2pages.pdf` (**2 pages**), `preview-all-12.pdf` (**13 pages**). All verified by `.scratch/qa/verify-artifacts.mjs` (18 files, 0 failures); `preview-co/cd/ci-bilingual` are now captured by the E2E final-screenshot step so future reruns keep them. Design before/after reference: `.scratch/doc-dev/redesign/`.
+
+## Version integrity
+
+`index.html` sidebar shows **v1.1.1**; `js/app.js` `APP_VERSION = '1.1.1'`; `README.md` documents v1.1.1. `js/recognize.js` `version` remains **1.1.0** (asserted by `test-recognize.mjs`) and `TradeDocs.docs.version` remains **1.0.0** (asserted by `test-templates.mjs`) — both unchanged by design.
+
+## v1.1.1 rerun instructions
+
+```powershell
+cd "C:\Users\Administrator\Desktop\Global Country\trade-docs"
+node tests/test-templates.mjs     # PASS 47/47
+node tests/test-core.mjs          # PASS 119/119
+node tests/test-recognize.mjs     # PASS 48/48
+node tests/e2e.mjs --selfcheck    # PASS 13/13
+node tests/e2e.mjs --full         # PASS 56/56 (42 v1.0 + 14 v1.1 recognition)
+```
+
+**Signoff:** v1.1.1 redesign passes unit, integration, print/PDF and visual QA on frozen files — no open findings; ready for release packaging.

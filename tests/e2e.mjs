@@ -2028,8 +2028,9 @@ async function runFullE2E() {
       const editor = await page.screenshot(path.join(SCREENSHOTS, 'order-editor.png'), { fullPage: true });
 
       const previewShots = {};
-      for (const key of ['ci', 'pl', 'sc', 'cs']) {
-        await page.evaluate(`window.TradeDocs.test.fillOrder(${JSON.stringify(demo.id)}, ${JSON.stringify({ print: { selected: [key] } })})`);
+      async function previewViewportShot(key, fileName, extraPrint) {
+        const print = Object.assign({ selected: [key] }, extraPrint || {});
+        await page.evaluate(`window.TradeDocs.test.fillOrder(${JSON.stringify(demo.id)}, ${JSON.stringify({ print })})`);
         await page.evaluate(`window.TradeDocs.test.openPreview(${JSON.stringify(demo.id)})`);
         await page.waitUntil('document.querySelectorAll(".doc-sheet").length === 1', { timeout: 12000 });
         await sleep(350);
@@ -2041,10 +2042,15 @@ async function runFullE2E() {
           window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - barHeight - 36);
         })()`);
         await sleep(200);
-        previewShots[key] = await page.screenshot(path.join(SCREENSHOTS, `preview-${key}.png`));
+        return page.screenshot(path.join(SCREENSHOTS, fileName));
       }
+      for (const key of ['ci', 'pl', 'sc', 'cs', 'co', 'cd']) {
+        previewShots[key] = await previewViewportShot(key, `preview-${key}.png`);
+      }
+      // bilingual CI deliverable screenshot (design pass v1.1.1)
+      previewShots['ci-bilingual'] = await previewViewportShot('ci', 'preview-ci-bilingual.png', { bilingual: true });
       // Restore demo selection + capture selected-set PDF once more on pristine data.
-      await page.evaluate(`window.TradeDocs.test.fillOrder(${JSON.stringify(demo.id)}, ${JSON.stringify({ print: { selected: ['ci', 'pl', 'sc', 'co'] } })})`);
+      await page.evaluate(`window.TradeDocs.test.fillOrder(${JSON.stringify(demo.id)}, ${JSON.stringify({ print: { selected: ['ci', 'pl', 'sc', 'co'], bilingual: false } })})`);
       await page.evaluate(`window.TradeDocs.test.openPreview(${JSON.stringify(demo.id)})`);
       await page.waitUntil('document.querySelectorAll(".doc-sheet").length === 4', { timeout: 12000 });
       await sleep(300);
