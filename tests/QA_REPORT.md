@@ -1,9 +1,9 @@
 # TradeDocs — QA Report
 
-**Owner:** qa · **Last updated:** 2026-11-22 01:45 (+08:00) — **v1.1.1 DESIGN PASS FINAL: all gates green, no open findings**
+**Owner:** qa · **Last updated:** 2026-11-22 03:30 (+08:00) — **v1.2 (CustomerCRM 客户通同步) FINAL: all gates green, no open findings**
 **Project:** `trade-docs`（relative paths below；测试报告随源码发布）
 **Environment:** Windows · Node v24.17.0 · Chrome 157.0.8103.79 (`C:\Program Files\Google\Chrome\Application\chrome.exe`) · zero npm/external dependencies
-**v1.1.1 frozen snapshot (design pass + version bump):** `js/doc-templates.js` 89,682 B @01:14:57 SHA `A6A75B2C…` · `css/print.css` 63,023 B @01:11:41 SHA `F351646D…` · `js/app.js` 207,160 B @01:17:37 SHA `D9D76ED3…` (visible app version 1.1.1) · `index.html` SHA `AF8727AD…` (v1.1.1) · `README.md` SHA `67E65C83…` (v1.1.1) · `js/recognize.js` 133,124 B @01:09:13 SHA `234825A3…` (engine version stays 1.1.0, intentional) · `css/app.css` SHA `318FB049…` · `js/store.js` `DBA0B63B…` · `js/core.js` `81485892…` · `js/demo.js` `74C8CDC4…`
+**v1.2 frozen snapshot:** `js/crm-sync.js` 23,812 B @02:38:55 SHA `A5D99117…` (VERSION 1.2.0) · `js/app.js` 253,402 B @02:50:17 SHA `4D858BAB…` (APP_VERSION 1.2.0) · `js/store.js` 31,556 B @02:56:31 SHA `3CFB22C0…` (native CRM persistence, task-17) · `index.html` 7,912 B SHA `11FDC46A…` (v1.2.0) · `css/app.css` 76,618 B @02:40:39 SHA `2BE9B251…` · `js/doc-templates.js` 89,667 B @02:28:45 SHA `EB638E0D…` (v1.1.2 CI banking removal) · `css/print.css` 63,023 B SHA `F351646D…` · `js/recognize.js` 133,124 B SHA `234825A3…` (version stays 1.1.0, intentional) · `js/core.js` `81485892…` · `js/demo.js` `74C8CDC4…` · `README.md` SHA `0DB59B20…` (v1.2.0)
 
 Severity legend: **S1 blocker** · **S2 major** · **S3 minor** · **S4 low/edge** · **INFO** (no action required).
 Status legend: ✅ PASS · 🔧 fixed & re-verified · ⚠️ open (none remaining)
@@ -282,3 +282,66 @@ node tests/test-recognize.mjs   # PASS 48/48
 node tests/e2e.mjs --full       # PASS 56/56
 ```
 E2E 打印矩阵仍为 11 类各 1 页 + SC 2 页 = 13 页；截图与 PDF 已随 E2E 重新生成。
+
+---
+
+# v1.2 — CustomerCRM 客户通同源只读同步 — FINAL
+
+**Run window:** 2026-11-22 02:40–03:30 (+08:00) · fresh Chrome profile · CONTRACT §14 · 冻结文件见报告头部（含 task-17 原生 store 修复）。
+
+## Results — all green
+
+| Gate | Command | Result |
+|---|---|---|
+| CRM sync unit (new) | `node tests/test-crm-sync.mjs` | ✅ **PASS 43/43**, exit 0 |
+| Core unit (regression) | `node tests/test-core.mjs` | ✅ PASS 119/119 |
+| Template unit (regression) | `node tests/test-templates.mjs` | ✅ PASS 47/47 (12 docs, incl. v1.1.2 CI banking assertions) |
+| Recognition unit (regression) | `node tests/test-recognize.mjs` | ✅ PASS 48/48 |
+| CDP harness self-check | `node tests/e2e.mjs --selfcheck` | ✅ PASS 13/13 |
+| Full integrated E2E (56 prior + 12 v1.2) | `node tests/e2e.mjs --full` | ✅ **PASS 68/68**, exit 0 |
+| Artifact verification | `.scratch/qa/verify-artifacts.mjs` | ✅ 21 files (18 PNG + 3 PDF), 0 failures |
+
+Print matrix unchanged (11 docs × 1 A4 + SC × 2 = 13 pages; selected demo set 5 pages). Zero console errors/page exceptions; 264 requests all same-origin/`data:`; file-provenance check stable (9 app files incl. `crm-sync.js`). Raw E2E log: `.scratch/qa/e2e-crm-full-output.txt`.
+
+## `tests/test-crm-sync.mjs` (43 tests)
+
+API/version (1.2.0) + 135-country zh→EN map; `read()` on the real 12-customer/2-won fixture (`tests/fixtures/crm-demo.json`) + missing/corrupt/disabled storage, bare-array payload, unsupported version warning, invalid-record filtering, empty payload, normalization and **read-only** proof (never writes; raw string unchanged). `mapCustomer()`: `nameEn=companyName||customerName`, contact, country mapping, `CRM-XXXXXX` code, externalId, source, `crmMeta` incl. `savedAt` fallback, **no invented address/email/tel/taxId**, non-object tolerance. `merge()`: won-only filter, selectedIds, add mapping/IDs, purity (deep-equal inputs), idempotency, dedupe by externalId **and** normalized company name (case/space/punctuation), auto sync never overwrites manual name/contact/country/address/email/tel/taxId, manual `updateExisting` updates CRM-owned fields but only fills blank contacts, conflict warning for a different externalId, invalid/no-name skips + de-duplicated warnings, unique IDs. `sync()` envelope meta + options pass-through.
+
+## E2E v1.2 CRM group (12 checks, all green)
+
+1. Seed `customer-crm.v1` before load (2 won + 1 not-won) → boot auto-sync imports **exactly the 2 won** customers with `来源 customer-crm` badge, `CRM-` code, `crmMeta`, `待补充：地址·邮箱·电话` hints; not-won excluded; CRM localStorage byte-identical (read-only); `autoSync=true` + `lastSyncAt` persisted in `tradedocs.integrations.v1`.
+2. Sync modal: stats `客户通总客户 3 / 已成交 2 / 已同步 2 / 待新增 0`, candidates table, privacy/read-only note; **cancel writes nothing** (customer data + CRM storage unchanged; screenshot `crm-sync.png`).
+3. Auto-sync toggle off via settings card persists to integration storage.
+4. With auto off, a storage event does **not** import a new won customer.
+5. Manual modal lists 3 candidates → uncheck-all / check-one → “同步选中” imports only that customer (`+1`, badge, toast) and re-renders list.
+6. Manually edited address/addressCn/tel/email/taxId survive auto + `updateExisting` re-sync; name/contact/country remain; CRM storage unchanged.
+7. Auto on → `storage` event debounce imports the new won customer automatically (no reload).
+8. New order from a synced customer → buyer `nameEn/contact/country` prefilled via customer snapshot; CI + PL render the buyer data.
+9. **Export → clearAll → import** restores `settings.integrations.customerCrm.autoSync` and CRM customer `source/externalId/crmMeta/syncedAt`; **reload** boot auto-sync imports one more won record with no duplicates and existing metadata intact; legacy backup without integrations imports its orders/customers intact (data integrity asserted, autoSync preference kept per app-shim behavior).
+10. No-data state (missing CRM key) and engine-missing state render readable guidance/error with no crash; `TradeDocs.test.syncCrmNow()` returns `reason:'engine-missing'`.
+11. Mobile 390 modal fits the viewport (no page-level overflow, candidate table scrolls, footer reachable; screenshot `crm-sync-mobile.png`).
+12. Final invariants: CRM storage never written by the app, idempotent re-sync (`added=0`), CRM markers/metadata intact, no undefined/NaN, zero console errors.
+
+Screenshots added: `screenshots/customers-crm.png` (customer list with 客户通 badges + 待补充 hints + auto-sync toast), `crm-sync.png` (sync review modal), `crm-sync-mobile.png` (390). All prior screenshots/PDFs refreshed; 21 files verified.
+
+## Findings
+
+None (no S1/S2/S3/S4 defects). Verified notes: customer sync is read-only and same-browser/same-origin only by design; the app writes integration/meta keys `tradedocs.integrations.v1` + `tradedocs.crm-meta.v1` in addition to `tradedocs.v1` (CONTRACT §14.3); addresses/emails/tels are never invented and manual edits are preserved; task-17's native store persistence was validated by the export/import/reload checks above.
+
+## Version integrity
+
+`index.html` sidebar **v1.2.0** · `APP_VERSION 1.2.0` · `TradeDocs.crmSync.VERSION 1.2.0` · `js/recognize.js` version stays **1.1.0** (test-recognize asserts) · `TradeDocs.docs.version` stays **1.0.0** (test-templates asserts).
+
+## v1.2 rerun instructions
+
+```powershell
+cd "C:\Users\Administrator\Desktop\Global Country\trade-docs"
+node tests/test-crm-sync.mjs      # PASS 43/43
+node tests/test-core.mjs          # PASS 119/119
+node tests/test-templates.mjs     # PASS 47/47
+node tests/test-recognize.mjs     # PASS 48/48
+node tests/e2e.mjs --selfcheck    # PASS 13/13
+node tests/e2e.mjs --full         # PASS 68/68 (56 prior + 12 v1.2 CRM)
+```
+
+**Signoff:** v1.2 CustomerCRM auto-sync passes unit, integrated, storage-persistence, export/import/reload and visual QA on frozen files — no open findings; ready for release packaging.

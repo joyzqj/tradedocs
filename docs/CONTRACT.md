@@ -25,11 +25,11 @@
 | **Lead** | `js/core.js`, `js/demo.js`, `docs/CONTRACT.md`, `build_single_file.py`, `README.md`, `dist/*` |
 | **ui-dev** | `index.html`, `css/app.css`, `js/store.js`, `js/app.js` |
 | **doc-dev** | `js/doc-templates.js`, `css/print.css` |
-| **recognize-dev** | `js/recognize.js`（v1.1 智能识别） |
+| **recognize-dev** | `js/recognize.js`、`js/crm-sync.js`（v1.2 客户通同步） |
 | **qa** | `tests/*`, `screenshots/*`（只读应用文件） |
 
 临时文件只能放 `trade-docs/.scratch/<自己的名字>/`。不要改别人的文件；集成问题报给 Lead。
-加载顺序固定：`core.js → demo.js → recognize.js → doc-templates.js → store.js → app.js`。
+加载顺序固定：`core.js → demo.js → recognize.js → crm-sync.js → doc-templates.js → store.js → app.js`。
 
 ## 3. 全局命名空间
 
@@ -466,4 +466,111 @@ TradeDocs.recognize = {
 - E2E 扩展：打开弹窗→载入示例→识别→核对→应用→编辑器字段和货物行出现；上传 txt/csv/docx/xlsx（CDP 文件上传）；不支持图片提示；取消不改数据；无外部网络请求、无 console error。
 - 原有 119 core / 47 template / 42 E2E 必须继续全绿。
 - Lead 重新构建单文件（7+1 个脚本）与 v1.1.0 发布包。
+
+---
+
+## 14. v1.2 客户通（CustomerCRM）自动同步
+
+### 14.1 背景与边界
+
+客户通：`https://joyzqj.github.io/customercrm/`，与本系统同属 `joyzqj.github.io`，纯静态、local-first，数据在 `localStorage['customer-crm.v1']`。因此**同一浏览器内**可由单证通直接读取，无需 API/后端：
+
+```js
+{ version:1, savedAt, settings, customers:[{
+  id, customerName, companyName, country, product, productModel, mainBusiness,
+  firstInquiryAt, followupStatus, dealStatus, coreReason, followups, createdAt, updatedAt
+}] }
+```
+
+目标：把客户通里 `dealStatus === '已成交'` 的客户自动同步到单证通「客户库」，新订单可直接选择并带出买方信息，生成单证。
+
+边界：
+- 仅同浏览器、同 origin（`joyzqj.github.io` 下）有效；不同浏览器/设备、单文件 `file://`、切换自定义域名都不共享数据。若需跨设备，需后端/API。
+- 客户通没有地址、邮箱、电话、税号字段：同步后这些留空，客户库/订单中显示「待补充」，不得编造；同步不得覆盖单证通中用户已手填的地址/邮箱/电话/税号。
+- 只读客户通 localStorage，**绝不写入/修改客户通数据**；不上传外网。
+- 客户通数据可能包含敏感客户资料：同 origin 的任意页面都能读取；仅在自己掌控的页面下使用，不在该 origin 放第三方不可信页面。
+- 自动同步默认开启（检测到客户通数据时）；用户可在客户库/设置关闭。自动同步只新增客户，不覆盖已有客户；手动同步可选择更新已有。
+
+### 14.2 新模块 `js/crm-sync.js`（recognize-dev 所有）
+
+经典 UMD，加载在 `core.js` 之后、`app.js` 之前；浏览器 `TradeDocs.crmSync` + Node `module.exports`；无 DOM/网络，localStorage 只读，Node 测试可传入 mock storage。
+
+```js
+TradeDocs.crmSync = {
+  VERSION: "1.2.0",
+  STORAGE_KEY: "customer-crm.v1",
+  COUNTRIES: { "德国": "Germany", ... },          // 客户通中文国名→英文国名，135国
+  read(storage = window.localStorage) -> {
+    available, reason, savedAt, total, won, customers, warnings
+  },
+  mapCustomer(record) -> customer,               // 不生成最终 id? 见 §14.3
+  merge(existingCustomers, records, {
+    onlyWon = true, updateExisting = false, selectedIds = null
+  }) -> {
+    customers, added, updated, linked, skipped, warnings
+  },
+  sync(storage, existingCustomers, options) -> same as merge + read meta
+}
+```
+
+- `read` 必须捕获 localStorage 不存在/disabled/JSON 损坏/quota 异常，返回 `available:false`/warning，不 throw。
+- `merge` 纯函数：深拷贝，不修改入参；只处理 `dealStatus === '已成交'`（`onlyWon:true`）；可选 `selectedIds` 只同步选中客户。
+- 去重：先按 `externalId`，再按规范化公司名（公司名缺失用联系人名）；忽略大小写/多余空格/常见标点。
+- 新增客户：`id = core.uid('cust_crm_')`，`source:"customer-crm"`, `externalId: record.id`, `code:"CRM-"+record.id后6位大写`, `syncedAt`, `crmMeta:{dealStatus,followupStatus,product,productModel,mainBusiness,firstInquiryAt,coreReason,savedAt}`。
+- 字段映射：
+  - `nameEn = companyName || customerName`
+  - `contact = customerName`
+  - `country = COUNTRIES[country] || country`（英文；未知保留原值）
+  - `nameCn/addressEn/addressCn/tel/email/taxId = ""`
+  - 不把 `coreReason` 塞进地址；只放 `crmMeta`。
+- 合并已有：
+  - `updateExisting:false`（自动同步）：匹配到已有客户时只补全空字段并写 `externalId/source/crmMeta/syncedAt`，绝不覆盖已有 `nameEn/contact/country/address/email/tel/taxId`；计 `linked`/`updated` 按实际变更。
+  - `updateExisting:true`（手动）：更新 `nameEn/contact/country/crmMeta`，但 `addressEn/addressCn/tel/email/taxId` 仅在原值为空时补，永不清空。
+- `read` 返回 `won` 为过滤后的数组、`total` 为全部客户数。
+
+### 14.3 UI（ui-dev）
+
+- 客户库页 header：新增按钮「从客户通同步」（`data-testid="crm-sync-open"`）；旁边状态徽标：
+  - 已连接：`客户通 · 已成交 N`
+  - 未检测到：`未检测到客户通数据`
+  - 只读、同浏览器说明。
+- 同步弹窗（xl）：
+  - 顶部说明「同浏览器直连 · 只读 · 不上传」；若同 origin 无数据，展示如何打开客户通、需同一浏览器。
+  - 统计：客户通总客户/已成交/已同步/待新增；表格列：复选框、公司、联系人、国家、状态、产品、缺失资料（地址/邮箱/电话）。
+  - 选项：`自动同步已成交客户`（开关，默认开）、`更新已有客户信息`（默认关）；按钮「同步选中」/「全部同步」。
+  - 同步完成 toast：新增 X、关联/更新 Y、跳过 Z；提示补齐地址/邮箱/电话。
+  - 所有数据 esc；无网络请求；取消不写入。
+- 自动同步（app.js）：
+  - 启动后尝试一次（延迟到首屏渲染完成），若 `TradeDocs.crmSync.read().available` 且有新已成交客户，静默合并并持久化；仅当 `added+updated>0` toast（最多一次/会话）。
+  - 监听 `window.storage` 事件（key `customer-crm.v1`），debounce 700ms 后自动同步；`visibilitychange` 回前台可再检查，节流 ≥60s。
+  - 自动同步遵循 `settings.integrations.customerCrm.autoSync`（默认 true）；状态写 `settings.integrations.customerCrm = {autoSync, lastSyncAt}`，不得破坏现有 state。
+  - 若 localStorage 写入失败，不阻塞主流程，toast 提示。
+- 客户列表/编辑：
+  - 客户行显示「客户通」来源徽标（`data-crm-source="customer-crm"`）。
+  - 缺地址/邮箱/电话的客户显示「待补充」提示；编辑后正常保存。
+  - 从客户库选择客户开单的既有逻辑不变；导入客户后可直接新建订单并带出 `nameEn/contact/country`。
+- 设置页/帮助页：
+  - 设置增加「客户通同步」卡片：连接状态、自动同步开关、立即同步按钮、同浏览器/同域说明、隐私说明。
+  - 帮助页增加「客户通客户同步」：自动/手动、缺失字段、换浏览器/域名失效说明。
+- 测试钩子：`crm-sync-open`、`crm-sync-run`、`crm-sync-all`、`crm-auto-toggle`、`crm-update-existing`、`data-crm-customer`、`data-crm-missing`；`TradeDocs.test` 增加 `syncCrmNow()` 便于 E2E。
+- 版本：`APP_VERSION 1.2.0`，侧栏 `v1.2.0`；`TradeDocs.crmSync.VERSION 1.2.0`；recognize.version 保持 1.1.0、docs.version 保持 1.0.0（现有测试断言）。
+
+### 14.4 验收（qa）
+
+- Node `tests/test-crm-sync.mjs`：
+  - 读取真实客户通 demo payload（可构造 fixture：12客户/2已成交）→ available/total/won/savedAt；
+  - 缺 key/损坏 JSON/storage 抛错 → warning 不 throw；
+  - 过滤已成交；国名映射（德国→Germany、英国→United Kingdom 等）；
+  - merge 新增：字段映射/ID/source/code/crmMeta，**不含编造地址/邮箱/电话**；
+  - 去重 externalId/公司名大小写/空格；自动同步不覆盖手填字段，手动更新只补空字段；
+  - selectedIds 只处理选中；纯函数/不改入参；重复 merge 幂等（第二次无新增）；updateExisting 语义；空/非法记录容错。
+- E2E 扩展：
+  - 测试服务器 origin 内预置 `customer-crm.v1`（2 个已成交+1 未成交）→ 首屏后客户库自动出现 2 个来源为 customer-crm 的客户，未成交不出现；
+  - 打开客户库→从客户通同步→看到已成交列表/缺失资料提示→选择同步；取消不写入；
+  - 用同步来的客户新建订单→buyer 自动带出 nameEn/contact/country→生成 CI/PL；
+  - 修改 storage 中的客户通数据并派发 storage 事件→自动新增；关闭自动同步后不自动新增；
+  - 客户库手动编辑地址/邮箱后再次自动同步不被覆盖；
+  - 无 CRM 数据时提示、不报错；无外部网络；390 移动端弹窗不溢出；现有 56 项 E2E 全绿。
+- 打印矩阵/版式不受影响；截图新增 `screenshots/crm-sync.png`（同步弹窗）与客户库徽标截图。
+
 

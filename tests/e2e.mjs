@@ -441,6 +441,7 @@ function hashAppFiles() {
     'css/app.css': fileHash('css/app.css'),
     'css/print.css': fileHash('css/print.css'),
     'js/app.js': fileHash('js/app.js'),
+    'js/crm-sync.js': fileHash('js/crm-sync.js'),
     'js/doc-templates.js': fileHash('js/doc-templates.js'),
     'js/store.js': fileHash('js/store.js'),
     'js/core.js': fileHash('js/core.js'),
@@ -1998,6 +1999,519 @@ async function runFullE2E() {
       await closeRecognition();
       await page.setViewport(1440, 900);
       if (page.errors().length) throw new Error(`console/page errors during recognition flows:\n       ${formatErrors(page)}`);
+    });
+
+    /* -------------------------------------------------------------- */
+    group('J. v1.2 CustomerCRM auto-sync (同源只读)');
+    /* -------------------------------------------------------------- */
+
+    const CRM_KEY = 'customer-crm.v1';
+    const CRM_SAVED_AT = '2026-11-21T10:30:00+08:00';
+    const CRM_BASE = [
+      {
+        id: 'crm_e2e_N7K2P9', customerName: 'Lena Hoffmann', companyName: 'Hanseatic Nordic Imports GmbH',
+        country: '德国', product: '不锈钢保温杯', productModel: 'BTL-500', mainBusiness: '家居用品进口',
+        firstInquiryAt: '2026-10-02', followupStatus: '已报价', dealStatus: '已成交', coreReason: '价格与账期符合预期',
+        createdAt: '2026-10-02T09:12:00+08:00', updatedAt: '2026-11-18T16:40:00+08:00'
+      },
+      {
+        id: 'crm_e2e_Q4M8Z1', customerName: 'Oliver Smith', companyName: '',
+        country: '英国', product: '陶瓷马克杯', productModel: 'MUG-120Z', mainBusiness: '礼品批发',
+        firstInquiryAt: '2026-10-11', followupStatus: '已寄样', dealStatus: '已成交', coreReason: '样品确认，首次下单',
+        updatedAt: '2026-11-20T09:15:00+08:00'
+      },
+      {
+        id: 'crm_e2e_OPEN01', customerName: 'Emily Carter', companyName: 'Blue Harbor Trading Inc.',
+        country: '美国', product: '竹制砧板三件套', productModel: 'CUT-BAM-3', mainBusiness: '家居零售',
+        firstInquiryAt: '2026-10-15', followupStatus: '已跟进', dealStatus: '未成交', coreReason: '等待客户确认数量'
+      }
+    ];
+    const CRM_AUTO_OFF = { id: 'crm_e2e_AUTOOFF', customerName: 'Auto Off Buyer', companyName: 'Auto Off Trading Ltd', country: '法国', product: '帆布手提袋', productModel: 'BAG-CVS', mainBusiness: '促销礼品', firstInquiryAt: '2026-11-21', followupStatus: '已报价', dealStatus: '已成交', coreReason: '关闭自动同步测试' };
+    const CRM_AUTO_ON = { id: 'crm_e2e_AUTOON', customerName: 'Auto On Buyer', companyName: 'Auto On Imports Ltd', country: '西班牙', product: '牛皮纸礼品盒', productModel: 'BOX-KRAFT', mainBusiness: '节庆礼品', firstInquiryAt: '2026-11-21', followupStatus: '已跟进', dealStatus: '已成交', coreReason: '存储事件自动同步测试' };
+    const CRM_RELOAD = { id: 'crm_e2e_RELOAD', customerName: 'Reload Buyer', companyName: 'Reload Trading GmbH', country: '荷兰', product: '陶瓷马克杯', productModel: 'MUG-120Z', mainBusiness: '礼品进口', firstInquiryAt: '2026-11-22', followupStatus: '已报价', dealStatus: '已成交', coreReason: '刷新后自动导入测试' };
+
+    function crmRaw(extras) {
+      return JSON.stringify({ version: 1, savedAt: CRM_SAVED_AT, settings: {}, customers: CRM_BASE.concat(extras || []) });
+    }
+    async function crmSetRaw(raw) {
+      await page.evaluate(`localStorage.setItem(${JSON.stringify(CRM_KEY)}, ${JSON.stringify(raw)})`);
+      return raw;
+    }
+    async function crmDispatchStorage() {
+      await page.evaluate(`window.dispatchEvent(new StorageEvent('storage', { key: ${JSON.stringify(CRM_KEY)}, newValue: localStorage.getItem(${JSON.stringify(CRM_KEY)}) }))`);
+    }
+    async function crmWaitCount(count, timeout = 12000, label = 'CRM customers') {
+      await page.waitUntil(`window.TradeDocs && window.TradeDocs.store.getState().customers.filter(function (c) { return c.source === 'customer-crm'; }).length === ${count}`, { timeout, label });
+    }
+    async function crmSnapshot() {
+      return page.evaluate(`(() => {
+        const s = window.TradeDocs.store.getState();
+        let integrations = null;
+        try { integrations = JSON.parse(localStorage.getItem('tradedocs.integrations.v1') || 'null'); } catch (e) {}
+        return {
+          customers: s.customers.map(function (c) {
+            return {
+              id: c.id, code: c.code || '', nameEn: c.nameEn || '', nameCn: c.nameCn || '',
+              contact: c.contact || '', country: c.country || '', addressEn: c.addressEn || '',
+              addressCn: c.addressCn || '', tel: c.tel || '', email: c.email || '', taxId: c.taxId || '',
+              source: c.source || '', externalId: c.externalId || '', syncedAt: c.syncedAt || '',
+              crmMeta: c.crmMeta || null
+            };
+          }),
+          orders: s.orders.length,
+          integrations: integrations,
+          stateIntegrations: (s.settings && s.settings.integrations) || null,
+          rawCrm: localStorage.getItem(${JSON.stringify(CRM_KEY)}),
+          rawState: localStorage.getItem('tradedocs.v1')
+        };
+      })()`);
+    }
+    async function crmNavCustomers() {
+      const modalOpen = await page.evaluate('!!document.querySelector("#crm-sync-modal")');
+      if (modalOpen) await crmCloseModal();
+      await page.evaluate('window.TradeDocs.app.navigate("#/customers")');
+      await page.waitUntil('!!document.querySelector("#customers-tbody")', { timeout: 12000 });
+      await sleep(250);
+    }
+    async function crmOpenSyncModal() {
+      const modalOpen = await page.evaluate('!!document.querySelector("#crm-sync-modal")');
+      if (modalOpen) await crmCloseModal();
+      await page.click('[data-testid="crm-sync-open"]');
+      await page.waitUntil('!!document.querySelector("#crm-sync-modal")', { timeout: 12000, label: 'crm sync modal' });
+      await sleep(250);
+    }
+    async function crmModalInfo() {
+      return page.evaluate(`(() => {
+        const host = document.querySelector('#crm-sync-modal');
+        if (!host) return null;
+        const stats = document.querySelector('.crm-stats');
+        const normalize = function (value) { return String(value || '').replace(/\\s+/g, ' ').trim(); };
+        return {
+          text: normalize(host.innerText),
+          stats: normalize(stats ? stats.innerText : ''),
+          rows: document.querySelectorAll('[data-crm-row]').length,
+          selected: document.querySelectorAll('[data-crm-customer]:checked').length,
+          hasNoData: host.innerText.indexOf('未检测到客户通数据') >= 0,
+          hasEngineMissing: host.innerText.indexOf('尚未加载') >= 0
+        };
+      })()`);
+    }
+    async function crmCloseModal() {
+      await page.evaluate(`(() => { const btn = document.querySelector('.modal-foot [data-action="close-modal"]'); if (btn) btn.click(); })()`);
+      await page.waitUntil('!document.querySelector("#crm-sync-modal")', { timeout: 8000 });
+      await sleep(150);
+    }
+    async function crmSetAutoSync(on) {
+      await page.evaluate('window.TradeDocs.app.navigate("#/settings")');
+      await page.waitUntil(`!!document.querySelector('[data-testid="crm-auto-toggle"]')`, { timeout: 12000 });
+      await sleep(200);
+      const checked = await page.evaluate(`document.querySelector('[data-testid="crm-auto-toggle"]').checked`);
+      if (checked !== !!on) {
+        await page.click('[data-testid="crm-auto-toggle"]');
+        await sleep(400);
+      }
+      return page.evaluate(`(() => { try { const raw = JSON.parse(localStorage.getItem('tradedocs.integrations.v1') || '{}'); return raw && raw.customerCrm ? raw.customerCrm.autoSync : null; } catch (e) { return null; } })()`);
+    }
+    async function crmCustomersDom() {
+      return page.evaluate(`(() => {
+        const rows = Array.from(document.querySelectorAll('#customers-tbody tr'));
+        const crmRows = rows.filter(function (r) { return r.getAttribute('data-crm-source') === 'customer-crm'; });
+        const status = document.querySelector('[data-crm-status-badge]');
+        const missing = Array.from(document.querySelectorAll('#customers-tbody [data-crm-missing]'));
+        return {
+          rows: rows.length,
+          crmRows: crmRows.length,
+          badges: crmRows.map(function (r) { const b = r.querySelector('.crm-source-badge'); return b ? b.textContent.trim() : ''; }),
+          missingCount: missing.length,
+          missingCodes: missing.map(function (e) { return e.getAttribute('data-crm-missing') || ''; }),
+          missingText: missing.map(function (e) { return (e.textContent || '').trim(); }),
+          statusText: status ? status.textContent.trim() : '',
+          pageSub: document.querySelector('.page-sub') ? document.querySelector('.page-sub').textContent.trim() : ''
+        };
+      })()`);
+    }
+
+    let crmLastRaw = '';
+    let crmDemoCount = 0;
+
+    await check('v1.2 CRM: boot auto-sync imports exactly the 2 won customers with badges, missing hints and read-only CRM storage', async () => {
+      page.clearErrors();
+      await page.setViewport(1440, 900);
+      await page.evaluate('(window.TradeDocs.store.resetDemo(), true)');
+      await page.evaluate('window.TradeDocs.app.navigate("#/dashboard")');
+      await page.waitForApp({ timeout: 20000 }).catch(() => {});
+      await sleep(250);
+      const demoCount = await page.evaluate('window.TradeDocs.store.getState().customers.length');
+      crmDemoCount = demoCount;
+      crmLastRaw = await crmSetRaw(crmRaw());
+      await page.reload();
+      await page.waitForApp({ timeout: 20000 });
+      await crmWaitCount(2);
+      const snap = await crmSnapshot();
+      const crm = snap.customers.filter((c) => c.source === 'customer-crm');
+      assert.equal(snap.customers.length, demoCount + 2, `demo ${demoCount} + imported 2 expected, got ${snap.customers.length}`);
+      assert.equal(crm.length, 2);
+      const nord = crm.find((c) => c.nameEn === 'Hanseatic Nordic Imports GmbH');
+      const oliver = crm.find((c) => (c.nameEn || c.contact) === 'Oliver Smith');
+      assert.ok(nord, 'Hanseatic customer missing: ' + JSON.stringify(crm.map((c) => c.nameEn)));
+      assert.ok(oliver, 'Oliver Smith customer missing');
+      assert.equal(nord.contact, 'Lena Hoffmann');
+      assert.equal(nord.country, 'Germany');
+      assert.equal(nord.source, 'customer-crm');
+      assert.ok(nord.externalId && /^CRM-/.test(nord.code), `externalId/code: ${nord.externalId}/${nord.code}`);
+      assert.equal(nord.crmMeta.dealStatus, '已成交');
+      assert.equal(nord.crmMeta.product, '不锈钢保温杯');
+      assert.ok(nord.syncedAt);
+      assert.equal(oliver.contact, 'Oliver Smith');
+      assert.equal(oliver.country, 'United Kingdom');
+      for (const customer of crm) {
+        assert.equal(customer.addressEn, '', 'CRM provides no address — must not be invented');
+        assert.equal(customer.addressCn, '');
+        assert.equal(customer.tel, '');
+        assert.equal(customer.email, '');
+      }
+      assert.ok(!snap.customers.some((c) => c.nameEn === 'Blue Harbor Trading Inc.'), 'not-won customer must not be imported');
+      assert.equal(snap.rawCrm, crmLastRaw, 'CustomerCRM localStorage must stay byte-identical (read-only)');
+      assert.equal(snap.integrations && snap.integrations.customerCrm.autoSync, true);
+      assert.ok(snap.stateIntegrations && snap.stateIntegrations.customerCrm.lastSyncAt, 'lastSyncAt missing');
+      await crmNavCustomers();
+      const dom = await crmCustomersDom();
+      assert.equal(dom.rows, demoCount + 2, `rows = ${dom.rows}`);
+      assert.equal(dom.crmRows, 2, `badge rows = ${dom.crmRows}`);
+      assert.equal(dom.badges.filter((b) => b.includes('客户通')).length, 2);
+      assert.ok(dom.statusText.includes('已成交 2'), `status badge: ${dom.statusText}`);
+      assert.ok(dom.pageSub.includes('客户通同步 2'), `page sub: ${dom.pageSub}`);
+      assert.ok(dom.missingCount >= 2, `missing hints = ${dom.missingCount}`);
+      assert.ok(dom.missingCodes.some((code) => code.includes('address') && code.includes('email') && code.includes('tel')), JSON.stringify(dom.missingCodes));
+      assert.ok(dom.missingText.some((text) => text.includes('待补充')), JSON.stringify(dom.missingText));
+      const shot = await page.screenshot(path.join(SCREENSHOTS, 'customers-crm.png'), { fullPage: true });
+      note(`screenshot: screenshots/customers-crm.png (${shot.bytes}B)`);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: sync modal shows stats/candidates; cancel makes no customer or storage writes', async () => {
+      await crmNavCustomers();
+      const before = await crmSnapshot();
+      await crmOpenSyncModal();
+      const info = await crmModalInfo();
+      assert.ok(info, 'modal missing');
+      assert.ok(info.stats.includes('客户通总客户 3'), `stats: ${info.stats}`);
+      assert.ok(info.stats.includes('已成交 2'), `stats: ${info.stats}`);
+      assert.ok(info.stats.includes('已同步 2'), `stats: ${info.stats}`);
+      assert.ok(info.stats.includes('待新增 0'), `stats: ${info.stats}`);
+      assert.equal(info.rows, 2, `candidates = ${info.rows}`);
+      assert.equal(info.selected, 0, 'already-synced candidates should be unselected by default');
+      assert.ok(info.text.includes('只读'), 'privacy note missing');
+      const shot = await page.screenshot(path.join(SCREENSHOTS, 'crm-sync.png'));
+      note(`screenshot: screenshots/crm-sync.png (${shot.bytes}B)`);
+      await crmCloseModal();
+      const after = await crmSnapshot();
+      const beforeState = JSON.parse(before.rawState || '{}');
+      const afterState = JSON.parse(after.rawState || '{}');
+      assert.deepEqual(afterState.customers, beforeState.customers, 'cancel changed tradedocs.v1 customers');
+      assert.equal(after.rawCrm, before.rawCrm, 'cancel changed CustomerCRM storage');
+      assert.deepEqual(after.customers, before.customers, 'cancel changed customers');
+      assert.equal(after.orders, before.orders);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: auto sync toggles off via settings card and persists to integration storage', async () => {
+      await crmSetAutoSync(false);
+      const snap = await crmSnapshot();
+      assert.equal(snap.integrations.customerCrm.autoSync, false);
+      assert.equal(snap.stateIntegrations.customerCrm.autoSync, false);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: with auto sync off, storage event does NOT import a new won customer', async () => {
+      const before = await crmSnapshot();
+      crmLastRaw = await crmSetRaw(crmRaw([CRM_AUTO_OFF]));
+      await crmDispatchStorage();
+      await sleep(1400);
+      const after = await crmSnapshot();
+      assert.equal(after.customers.filter((c) => c.source === 'customer-crm').length, 2, 'auto sync should be off');
+      assert.ok(!after.customers.some((c) => (c.nameEn || c.contact).includes('Auto Off')), 'auto-imported while autoSync off');
+      assert.equal(after.orders, before.orders);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: manual modal lists 3 candidates and "sync selected" imports only the checked one', async () => {
+      await crmNavCustomers();
+      await crmOpenSyncModal();
+      const info = await crmModalInfo();
+      assert.equal(info.rows, 3, `candidates: ${info.rows}`);
+      assert.ok(info.stats.includes('客户通总客户 4') && info.stats.includes('已成交 3'), info.stats);
+      assert.ok(info.stats.includes('已同步 2') && info.stats.includes('待新增 1'), info.stats);
+      assert.equal(info.selected, 1, 'only the unmatched candidate is pre-selected');
+      // Explicitly uncheck all, then check exactly the new candidate.
+      await page.evaluate(`(() => {
+        Array.from(document.querySelectorAll('[data-crm-customer]')).forEach(function (el) {
+          if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+      })()`);
+      await page.evaluate(`(() => {
+        const el = document.querySelector('[data-crm-customer="${CRM_AUTO_OFF.id}"]');
+        if (!el) return false;
+        el.checked = true;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      await sleep(200);
+      const picked = await crmModalInfo();
+      assert.equal(picked.selected, 1);
+      await page.click('[data-testid="crm-sync-run"]');
+      await page.waitUntil(`!document.querySelector("#crm-sync-modal")`, { timeout: 10000 });
+      await page.waitUntil(`Array.from(document.querySelectorAll('[data-testid="toast"]')).some((e) => e.textContent.includes('新增 1'))`, { timeout: 10000, label: 'manual sync toast' });
+      await crmWaitCount(3);
+      const snap = await crmSnapshot();
+      const added = snap.customers.find((c) => c.nameEn === 'Auto Off Trading Ltd');
+      assert.ok(added, 'selected customer was not imported');
+      assert.equal(added.source, 'customer-crm');
+      assert.ok(added.externalId && added.syncedAt && added.crmMeta.dealStatus === '已成交');
+      await crmNavCustomers();
+      const dom = await crmCustomersDom();
+      assert.equal(dom.rows, crmDemoCount + 3, `rows = ${dom.rows}`);
+      assert.equal(dom.crmRows, 3);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: manually edited address/email/tel/taxId survive re-sync (auto + updateExisting)', async () => {
+      const before = await crmSnapshot();
+      const target = before.customers.find((c) => c.nameEn === 'Hanseatic Nordic Imports GmbH');
+      assert.ok(target, `synced customer missing: ${JSON.stringify(before.customers.map((c) => [c.nameEn, c.source]))}`);
+      await crmNavCustomers();
+      await page.click(`[data-action="edit-customer"][data-id="${target.id}"]`);
+      await page.waitUntil('!!document.querySelector("#customer-form")', { timeout: 8000 });
+      await page.fill('[name="addressEn"]', '12 Hafenstrasse, Hamburg');
+      await page.fill('[name="addressCn"]', '汉堡港12号');
+      await page.fill('[name="tel"]', '+49 40 123456');
+      await page.fill('[name="email"]', 'lena@nordlicht.example');
+      await page.fill('[name="taxId"]', 'DE811234567');
+      await page.click('[data-action="save-customer"]');
+      await page.waitUntil('!document.querySelector("#customer-form")', { timeout: 8000 });
+      await sleep(400);
+      const saved = await crmSnapshot();
+      const savedCustomer = saved.customers.find((c) => c.id === target.id);
+      assert.equal(savedCustomer.addressEn, '12 Hafenstrasse, Hamburg');
+      assert.equal(savedCustomer.addressCn, '汉堡港12号');
+      assert.equal(savedCustomer.tel, '+49 40 123456');
+      assert.equal(savedCustomer.email, 'lena@nordlicht.example');
+      assert.equal(savedCustomer.taxId, 'DE811234567');
+      // Manual re-sync (all + updateExisting) must keep the manually entered contact data.
+      await page.evaluate('window.TradeDocs.test.syncCrmNow({})');
+      await page.evaluate('window.TradeDocs.test.syncCrmNow({ updateExisting: true })');
+      await sleep(300);
+      const after = await crmSnapshot();
+      const afterCustomer = after.customers.find((c) => c.id === target.id);
+      assert.equal(afterCustomer.addressEn, '12 Hafenstrasse, Hamburg');
+      assert.equal(afterCustomer.addressCn, '汉堡港12号');
+      assert.equal(afterCustomer.tel, '+49 40 123456');
+      assert.equal(afterCustomer.email, 'lena@nordlicht.example');
+      assert.equal(afterCustomer.taxId, 'DE811234567');
+      assert.equal(afterCustomer.nameEn, 'Hanseatic Nordic Imports GmbH');
+      assert.equal(afterCustomer.contact, 'Lena Hoffmann');
+      assert.equal(afterCustomer.country, 'Germany');
+      assert.equal(after.rawCrm, crmLastRaw, 'CRM storage must stay unchanged');
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: auto sync on + storage event imports a new won customer automatically', async () => {
+      const autoSync = await crmSetAutoSync(true);
+      assert.equal(autoSync, true);
+      crmLastRaw = await crmSetRaw(crmRaw([CRM_AUTO_OFF, CRM_AUTO_ON]));
+      await crmDispatchStorage();
+      await crmWaitCount(4, 8000, 'storage-event auto import');
+      const snap = await crmSnapshot();
+      const imported = snap.customers.find((c) => c.nameEn === 'Auto On Imports Ltd');
+      assert.ok(imported, 'storage event did not auto-import the new won customer');
+      assert.equal(imported.source, 'customer-crm');
+      assert.equal(imported.country, 'Spain');
+      assert.equal(imported.crmMeta.dealStatus, '已成交');
+      assert.equal(snap.integrations.customerCrm.autoSync, true);
+      await crmNavCustomers();
+      const dom = await crmCustomersDom();
+      assert.equal(dom.crmRows, 4);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: new order from synced customer prefills buyer name/contact/country and renders CI+PL', async () => {
+      const snap = await crmSnapshot();
+      const target = snap.customers.find((c) => c.nameEn === 'Hanseatic Nordic Imports GmbH');
+      assert.ok(target, `synced customer missing: ${JSON.stringify(snap.customers.map((c) => [c.nameEn, c.source]))}`);
+      const created = await page.evaluate(`(() => { const o = window.TradeDocs.test.createOrder({}); return { id: o.id }; })()`);
+      assert.ok(created && created.id, 'createOrder did not return an order');
+      await page.waitUntil('!!document.querySelector("#order-form")', { timeout: 12000 });
+      await sleep(250);
+      const selected = await page.evaluate(`(() => {
+        const sel = document.querySelector('#customer-select');
+        if (!sel) return null;
+        sel.value = ${JSON.stringify(target.id)};
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        return sel.value;
+      })()`);
+      assert.equal(selected, target.id);
+      await sleep(350);
+      await page.evaluate('window.TradeDocs.app.navigate("#/dashboard")'); // flush editor
+      await sleep(400);
+      const order = await page.evaluate(`(() => {
+        const o = window.TradeDocs.store.getOrder(${JSON.stringify(created.id)});
+        return o ? { customerId: o.customerId || '', buyer: o.buyer } : null;
+      })()`);
+      assert.ok(order, 'order not found after customer selection');
+      assert.equal(order.customerId, target.id);
+      assert.equal(order.buyer.nameEn, 'Hanseatic Nordic Imports GmbH');
+      assert.equal(order.buyer.contact, 'Lena Hoffmann');
+      assert.equal(order.buyer.country, 'Germany');
+      for (const docKey of ['ci', 'pl']) {
+        await page.evaluate(`window.TradeDocs.test.fillOrder(${JSON.stringify(created.id)}, ${JSON.stringify({ print: { selected: [docKey] } })})`);
+        await page.evaluate(`window.TradeDocs.test.openPreview(${JSON.stringify(created.id)})`);
+        await page.waitUntil('document.querySelectorAll(".doc-sheet").length === 1', { timeout: 12000, label: docKey + ' sheet' });
+        await sleep(250);
+        const text = await page.evaluate('document.querySelector(".doc-sheet").innerText');
+        assert.ok(text.includes('Hanseatic Nordic Imports GmbH'), `${docKey} missing buyer name`);
+        assert.ok(text.includes('Lena Hoffmann'), `${docKey} missing buyer contact`);
+        assert.ok(text.includes('Germany'), `${docKey} missing buyer country`);
+      }
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: export→clearAll→import preserves autoSync + CRM metadata; auto-import works after reload', async () => {
+      const before = await crmSnapshot();
+      const beforeCrm = before.customers.filter((c) => c.source === 'customer-crm');
+      assert.equal(beforeCrm.length, 4);
+      const exportStr = await page.evaluate('window.TradeDocs.store.exportJSON()');
+      assert.equal(typeof exportStr, 'string');
+      const exported = JSON.parse(exportStr);
+      assert.equal(exported.settings.integrations.customerCrm.autoSync, true, 'export lost autoSync');
+      assert.equal((exported.customers || []).filter((c) => c.source === 'customer-crm').length, 4, 'export lost CRM customers');
+      assert.ok((exported.customers || []).every((c) => c.source !== 'customer-crm' || (c.externalId && c.crmMeta && c.crmMeta.dealStatus)), 'export lost CRM metadata');
+      await page.evaluate('(window.TradeDocs.store.clearAll(), true)');
+      await sleep(200);
+      const cleared = await crmSnapshot();
+      assert.equal(cleared.customers.length, 0);
+      const importResult = await page.evaluate(`window.TradeDocs.store.importJSON(${JSON.stringify(exportStr)})`);
+      assert.ok(importResult && importResult.ok, `import failed: ${JSON.stringify(importResult)}`);
+      await sleep(400);
+      const restored = await crmSnapshot();
+      const restoredCrm = restored.customers.filter((c) => c.source === 'customer-crm');
+      assert.equal(restored.customers.length, before.customers.length, `customers restored ${restored.customers.length}/${before.customers.length}`);
+      assert.equal(restoredCrm.length, 4, 'CRM customers lost on import');
+      assert.equal(restored.integrations.customerCrm.autoSync, true, 'autoSync lost on import');
+      for (const customer of restoredCrm) {
+        assert.ok(customer.externalId, `externalId lost for ${customer.nameEn}`);
+        assert.ok(customer.crmMeta && customer.crmMeta.dealStatus === '已成交', `crmMeta lost for ${customer.nameEn}`);
+        assert.ok(customer.syncedAt, `syncedAt lost for ${customer.nameEn}`);
+      }
+      // Reload: boot auto-sync imports one more won record; existing CRM metadata must stay intact.
+      crmLastRaw = await crmSetRaw(crmRaw([CRM_AUTO_OFF, CRM_AUTO_ON, CRM_RELOAD]));
+      await page.reload();
+      await page.waitForApp({ timeout: 20000 });
+      await crmWaitCount(5, 10000, 'reload auto-import');
+      await sleep(300);
+      const afterReload = await crmSnapshot();
+      const reloadImported = afterReload.customers.find((c) => c.nameEn === 'Reload Trading GmbH');
+      assert.ok(reloadImported, 'boot auto-sync did not import the new won record after reload');
+      assert.equal(reloadImported.source, 'customer-crm');
+      const nordAfterReload = afterReload.customers.find((c) => c.nameEn === 'Hanseatic Nordic Imports GmbH');
+      assert.ok(nordAfterReload, `Hanseatic lost after reload: ${JSON.stringify(afterReload.customers.map((c) => [c.nameEn, c.source]))}`);
+      assert.ok(nordAfterReload.externalId && nordAfterReload.crmMeta && nordAfterReload.crmMeta.dealStatus === '已成交');
+      assert.equal(afterReload.integrations.customerCrm.autoSync, true);
+      // Legacy backup without integrations still imports its data intact (autoSync preference may be kept).
+      const legacy = { schemaVersion: 1, savedAt: '2026-11-01T00:00:00', settings: {}, customers: before.customers.filter((c) => c.source !== 'customer-crm').slice(0, 2), products: [], orders: [] };
+      const legacyResult = await page.evaluate(`window.TradeDocs.store.importJSON(${JSON.stringify(JSON.stringify(legacy))})`);
+      assert.ok(legacyResult && legacyResult.ok, `legacy import failed: ${JSON.stringify(legacyResult)}`);
+      await sleep(300);
+      const legacySnap = await crmSnapshot();
+      assert.equal(legacySnap.customers.length, 2, 'legacy backup customers not imported');
+      assert.ok(!legacySnap.customers.some((c) => c.source === 'customer-crm'), 'legacy backup must not invent CRM customers');
+      // Restore the full v1.2 state for the remaining checks (import backup + add the reloaded customer).
+      await page.evaluate(`window.TradeDocs.store.importJSON(${JSON.stringify(exportStr)})`);
+      await sleep(300);
+      await page.evaluate('window.TradeDocs.test.syncCrmNow({})');
+      await crmWaitCount(5, 8000, 'restore CRM state');
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: no-data and engine-missing states are readable and crash-free', async () => {
+      await page.evaluate(`localStorage.removeItem(${JSON.stringify(CRM_KEY)})`);
+      await crmNavCustomers();
+      await crmOpenSyncModal();
+      const noData = await crmModalInfo();
+      assert.ok(noData.hasNoData, 'no-data view missing');
+      assert.ok(noData.text.includes('同一浏览器'), 'guidance text missing');
+      assert.ok(noData.text.includes('只读'), 'privacy note missing');
+      await crmCloseModal();
+      const engineMissing = await page.evaluate(`(() => {
+        const engine = window.TradeDocs.crmSync;
+        window.__qaCrmEngine = engine;
+        window.TradeDocs.crmSync = null;
+        const result = window.TradeDocs.test.syncCrmNow({});
+        window.TradeDocs.crmSync = engine;
+        return result;
+      })()`);
+      assert.equal(engineMissing.ok, false);
+      assert.equal(engineMissing.reason, 'engine-missing');
+      await page.evaluate(`(() => { window.TradeDocs.crmSync = null; })()`);
+      await crmNavCustomers();
+      await crmOpenSyncModal();
+      const missingInfo = await crmModalInfo();
+      assert.ok(missingInfo.hasEngineMissing, 'engine-missing view missing');
+      await page.evaluate(`(() => { window.TradeDocs.crmSync = window.__qaCrmEngine; })()`);
+      await crmCloseModal();
+      crmLastRaw = await crmSetRaw(crmRaw([CRM_AUTO_OFF, CRM_AUTO_ON, CRM_RELOAD]));
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: mobile 390 sync modal fits the viewport without page overflow', async () => {
+      await crmNavCustomers();
+      await page.setViewport(390, 844, { mobile: true });
+      await crmOpenSyncModal();
+      await sleep(250);
+      const layout = await page.evaluate(`(() => {
+        const modal = document.querySelector('#modal-root .modal');
+        const body = document.querySelector('#crm-sync-modal');
+        const r = modal ? modal.getBoundingClientRect() : null;
+        return {
+          docScrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          modalRect: r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null,
+          modalBodyScroll: body ? getComputedStyle(body).overflowY : null,
+          rows: document.querySelectorAll('[data-crm-row]').length
+        };
+      })()`);
+      assert.equal(layout.docScrollWidth, layout.innerWidth, `page overflow: ${layout.docScrollWidth} > ${layout.innerWidth}`);
+      assert.ok(layout.modalRect, 'modal missing');
+      assert.ok(layout.modalRect.left >= 0 && layout.modalRect.right <= layout.innerWidth + 1, `modal outside viewport: ${JSON.stringify(layout.modalRect)}`);
+      assert.ok(layout.modalRect.bottom <= 844 + 2, `modal taller than viewport: ${JSON.stringify(layout.modalRect)}`);
+      assert.ok(layout.rows >= 2, 'candidate rows missing on mobile');
+      const shot = await page.screenshot(path.join(SCREENSHOTS, 'crm-sync-mobile.png'));
+      note(`screenshot: screenshots/crm-sync-mobile.png (${shot.bytes}B)`);
+      await crmCloseModal();
+      await page.setViewport(1440, 900);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
+    });
+
+    await check('v1.2 CRM: final invariants — read-only CRM storage, idempotent sync, metadata intact, no console errors', async () => {
+      await crmNavCustomers();
+      const snap = await crmSnapshot();
+      assert.equal(snap.rawCrm, crmLastRaw, 'CustomerCRM localStorage changed during QA flows');
+      const crm = snap.customers.filter((c) => c.source === 'customer-crm');
+      assert.equal(crm.length, 5, `CRM customers = ${crm.length}`);
+      for (const customer of crm) {
+        assert.ok(customer.source === 'customer-crm' && customer.externalId, `CRM markers lost: ${JSON.stringify(customer)}`);
+        assert.ok(customer.crmMeta && customer.crmMeta.dealStatus === '已成交', `crmMeta lost: ${customer.nameEn}`);
+        assert.ok(customer.syncedAt, `syncedAt lost: ${customer.nameEn}`);
+      }
+      const json = JSON.stringify(snap.customers);
+      assert.ok(!json.includes('undefined') && !json.includes('NaN'), 'undefined/NaN in customer data');
+      const idempotent = await page.evaluate('window.TradeDocs.test.syncCrmNow({})');
+      assert.equal(idempotent.ok, true, `syncCrmNow failed: ${JSON.stringify(idempotent)}`);
+      assert.equal(idempotent.added, 0, `idempotent sync added ${idempotent.added}`);
+      assert.equal(idempotent.linked, 0);
+      const after = await crmSnapshot();
+      assert.equal(after.rawCrm, crmLastRaw, 'sync wrote to CustomerCRM storage');
+      assert.equal(after.integrations.customerCrm.autoSync, true);
+      if (page.errors().length) throw new Error(`console/page errors:\n       ${formatErrors(page)}`);
     });
 
     /* -------------------------------------------------------------- */

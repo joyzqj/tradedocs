@@ -167,12 +167,17 @@
     return { next: next, padding: 4 };
   }
 
+  function emptyIntegrations() {
+    return { customerCrm: { autoSync: true, lastSyncAt: '' } };
+  }
+
   function defaultSettings() {
     return {
       company: emptyCompany(),
       bank: emptyBank(),
       defaults: emptyDefaults(),
       numbering: emptyNumbering(),
+      integrations: emptyIntegrations(),
       ui: { lastRoute: '#/dashboard' }
     };
   }
@@ -194,6 +199,14 @@
     settings.numbering.padding = Math.min(8, Math.max(1, padding || 4));
     var ui = isPlainObject(raw.ui) ? raw.ui : {};
     settings.ui.lastRoute = str(ui.lastRoute) || '#/dashboard';
+    // Preserve integration settings (e.g. CustomerCRM auto-sync) across
+    // normalization, export and import. Tolerate missing/corrupt values.
+    var integrations = isPlainObject(raw.integrations) ? raw.integrations : {};
+    deepAssign(settings.integrations, integrations);
+    var customerCrm = isPlainObject(settings.integrations.customerCrm) ? settings.integrations.customerCrm : {};
+    customerCrm.autoSync = customerCrm.autoSync !== false;
+    customerCrm.lastSyncAt = str(customerCrm.lastSyncAt);
+    settings.integrations.customerCrm = customerCrm;
     settings.defaults.currency = str(settings.defaults.currency) || 'USD';
     settings.defaults.incoterm = str(settings.defaults.incoterm) || 'FOB';
     settings.defaults.countryOfOrigin = str(settings.defaults.countryOfOrigin) || 'CHINA';
@@ -301,6 +314,16 @@
       customer[field] = str(raw[field]);
     });
     if (!customer.id) customer.id = core.uid('cust');
+    // Preserve CustomerCRM linkage metadata for customers synced from the
+    // same-browser CRM; plain/manual customers keep the existing schema.
+    var source = str(raw.source);
+    var externalId = str(raw.externalId);
+    if (source === 'customer-crm' || externalId) {
+      customer.source = 'customer-crm';
+      customer.externalId = externalId;
+      customer.syncedAt = str(raw.syncedAt);
+      customer.crmMeta = isPlainObject(raw.crmMeta) ? clone(raw.crmMeta) : {};
+    }
     return customer;
   }
 

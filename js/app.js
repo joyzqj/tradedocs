@@ -9,7 +9,7 @@
   var TD = root.TradeDocs = root.TradeDocs || {};
   var core = TD.core;
   var store = TD.store;
-  var APP_VERSION = '1.1.2';
+  var APP_VERSION = '1.2.0';
 
   if (!core || !store) {
     (root.console || { error: function () {} }).error('[TradeDocs] app.js requires core.js and store.js first');
@@ -199,7 +199,8 @@
     'more-horizontal': '<circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/>',
     'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
     'credit-card': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
-    keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/>'
+    keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
   };
 
   function icon(name, size, className) {
@@ -1920,18 +1921,24 @@
   var customersQuery = '';
 
   function customersPage() {
+    var crmStatus = crmStatusInfo();
     var customers = (store.getState().customers || []).slice().sort(function (a, b) {
       return String(a.nameEn || a.nameCn || '').localeCompare(String(b.nameEn || b.nameCn || ''));
     });
+    var crmSyncedCount = customers.filter(function (customer) { return customer.source === 'customer-crm'; }).length;
     var rows = customers.map(function (customer) {
-      var search = [customer.code, customer.nameEn, customer.nameCn, customer.country, customer.contact, customer.tel, customer.email].join(' ').toLowerCase();
-      return '<tr data-customer-id="' + esc(customer.id) + '" data-search="' + esc(search) + '">' +
-        '<td><span class="mono">' + esc(customer.code || '—') + '</span></td>' +
+      var isCrm = customer.source === 'customer-crm';
+      var search = [customer.code, customer.nameEn, customer.nameCn, customer.country, customer.contact, customer.tel, customer.email, isCrm ? '客户通 customer-crm' : ''].join(' ').toLowerCase();
+      return '<tr data-customer-id="' + esc(customer.id) + '" data-search="' + esc(search) + '"' + (isCrm ? ' data-crm-source="customer-crm"' : '') + '>' +
+        '<td><span class="mono">' + esc(customer.code || '—') + '</span>' +
+        (isCrm ? '<div class="cell-sub">客户通</div>' : '') + '</td>' +
         '<td><span class="cell-primary">' + esc(customer.nameEn || customer.nameCn || '未命名客户') + '</span>' +
-        (customer.nameCn && customer.nameEn ? '<div class="cell-sub">' + esc(customer.nameCn) + '</div>' : '') + '</td>' +
+        (customer.nameCn && customer.nameEn ? '<div class="cell-sub">' + esc(customer.nameCn) + '</div>' : '') +
+        (isCrm ? ' <span class="crm-source-badge" data-crm-source="customer-crm" title="来自客户通（只读同步）">' + icon('users', 11) + '客户通</span>' : '') + '</td>' +
         '<td>' + esc(customer.country || '—') + '</td>' +
         '<td>' + esc(customer.contact || '—') + '</td>' +
-        '<td><div>' + esc(customer.email || '—') + '</div><div class="cell-sub">' + esc(customer.tel || '') + '</div></td>' +
+        '<td><div>' + esc(customer.email || '—') + '</div><div class="cell-sub">' + esc(customer.tel || '') + '</div>' +
+        crmMissingHTML(customer, true) + '</td>' +
         '<td class="actions"><span class="row-actions">' +
         '<button class="btn btn--sm" type="button" data-action="edit-customer" data-id="' + esc(customer.id) + '">编辑</button>' +
         '<button class="icon-btn icon-btn--sm icon-btn--plain icon-btn--danger" type="button" data-action="delete-customer" data-id="' + esc(customer.id) + '" title="删除客户" aria-label="删除客户 ' + esc(customer.nameEn || customer.nameCn) + '">' + icon('trash', 15) + '</button>' +
@@ -1942,24 +1949,30 @@
       ? '<div class="card"><div class="toolbar"><div class="toolbar-search">' + icon('search', 16) +
         '<label class="sr-only" for="customers-search">搜索客户</label>' +
         '<input class="input" id="customers-search" type="search" placeholder="搜索客户名称 / 编号 / 国家 / 联系人" value="' + esc(customersQuery) + '" autocomplete="off">' +
-        '</div><span class="toolbar-meta">共 <b class="list-count" id="customers-count">' + customers.length + '</b> 家客户</span></div>' +
+        '</div><span class="toolbar-meta">共 <b class="list-count" id="customers-count">' + customers.length + '</b> 家客户' +
+        (crmSyncedCount ? ' · 客户通 <b class="list-count">' + crmSyncedCount + '</b> 家' : '') + '</span></div>' +
         '<div class="table-wrap table-wrap-rounded"><table class="data"><thead><tr>' +
-        '<th>客户编号</th><th>公司名称</th><th>国家 / 地区</th><th>联系人</th><th>联系方式</th><th class="actions">操作</th>' +
+        '<th>客户编号</th><th>公司名称</th><th>国家 / 地区</th><th>联系人</th><th>联系方式 / 待补充</th><th class="actions">操作</th>' +
         '</tr></thead><tbody id="customers-tbody">' + rows + '</tbody></table>' +
         '<div class="table-empty" id="customers-filter-empty" hidden>没有匹配的客户。</div></div></div>'
       : '<div class="card">' + emptyState({
         icon: 'users',
         title: '客户库还是空的',
-        message: '把常用买方存入客户库，新建订单时一键带入买方信息快照，之后修改互不影响。',
-        actions: '<button class="btn btn--primary" type="button" data-action="new-customer">' + icon('plus', 16) + '新建客户</button>'
+        message: '把常用买方存入客户库，或从同浏览器的「客户通」一键同步已成交客户；新建订单时可带入买方信息快照。',
+        actions: '<button class="btn btn--primary" type="button" data-action="new-customer">' + icon('plus', 16) + '新建客户</button>' +
+          '<button class="btn" type="button" data-testid="crm-sync-open" data-action="crm-sync-open">' + icon('refresh', 16) + '从客户通同步</button>'
       }) + '</div>';
 
     return {
       html: '<div class="page-head"><div class="page-head-main">' +
         '<div class="page-eyebrow">' + icon('users', 13) + '资料库 · 买方档案</div>' +
         '<h2 class="page-title">客户管理</h2>' +
-        '<p class="page-sub">共 ' + customers.length + ' 家客户 · 订单保存的是买方快照，删除客户不会影响历史订单</p></div>' +
-        '<div class="page-actions"><button class="btn btn--primary" type="button" data-action="new-customer">' + icon('plus', 16) + '新建客户</button></div></div>' + body,
+        '<p class="page-sub">共 ' + customers.length + ' 家客户' +
+        (crmSyncedCount ? ' · 其中客户通同步 ' + crmSyncedCount + ' 家' : '') +
+        ' · 订单保存的是买方快照，删除客户不会影响历史订单</p></div>' +
+        '<div class="page-actions">' + crmStatusBadgeHTML(crmStatus) +
+        '<button class="btn" type="button" data-testid="crm-sync-open" data-action="crm-sync-open">' + icon('refresh', 15) + '从客户通同步</button>' +
+        '<button class="btn btn--primary" type="button" data-action="new-customer">' + icon('plus', 16) + '新建客户</button></div></div>' + body,
       title: '客户管理',
       crumbs: '工作台 / 客户管理',
       nav: 'customers',
@@ -1972,6 +1985,7 @@
           });
         }
         filterLibraryRows('#customers-tbody', '#customers-filter-empty', '#customers-count', customersQuery);
+        refreshCrmStatusUI();
       }
     };
   }
@@ -1999,7 +2013,11 @@
       id: '', code: '', nameEn: '', nameCn: '', addressEn: '', addressCn: '',
       country: '', contact: '', tel: '', email: '', taxId: ''
     };
-    var body = '<form id="customer-form" autocomplete="off"><div class="form-grid">' +
+    var crmNote = customer && customer.source === 'customer-crm'
+      ? '<div class="alert alert--info crm-customer-note">' + icon('info', 15) +
+        '<span>该客户来自「客户通」：公司名称 / 联系人 / 国家由客户通同步，客户通不提供地址、邮箱、电话与税号；请在此手动补充，自动同步不会覆盖这些字段。</span></div>'
+      : '';
+    var body = crmNote + '<form id="customer-form" autocomplete="off"><div class="form-grid">' +
       field({ label: '客户编号', name: 'code', value: draft.code, path: false, placeholder: 'C-USA-001' }) +
       field({ label: '国家 / 地区', name: 'country', value: draft.country, path: false, placeholder: 'UNITED STATES' }) +
       field({ label: '公司名称（英文）', name: 'nameEn', value: draft.nameEn, path: false, span: 'full', required: true, placeholder: 'ATLANTIC HOME GOODS LLC' }) +
@@ -2037,6 +2055,7 @@
       toast('客户保存失败', 'error');
       return;
     }
+    try { rehydratePersistentState(); } catch (err) { console.error('[TradeDocs] 客户来源信息回填失败', err); }
     closeModal();
     toast('客户已保存：' + (saved.nameCn || saved.nameEn), 'success');
     refreshPage();
@@ -2312,6 +2331,8 @@
       }).join('') + '</div>'
     });
 
+    var crmCard = crmSettingsCardHTML();
+
     var backupCard = sectionCard({
       icon: 'download',
       title: '数据备份与迁移',
@@ -2329,12 +2350,12 @@
     var html = '<div class="page-head"><div class="page-head-main">' +
       '<div class="page-eyebrow">' + icon('settings', 13) + '系统设置</div>' +
       '<h2 class="page-title">设置</h2>' +
-      '<p class="page-sub">公司抬头、银行、默认条款与编号规则 · 修改会自动保存</p></div>' +
+      '<p class="page-sub">公司抬头、默认条款、编号规则与客户通同步 · 修改会自动保存</p></div>' +
       '<div class="page-actions">' +
       '<a class="btn btn--ghost" href="#/help">' + icon('help', 15) + '使用说明</a>' +
       '<button class="btn btn--primary" type="button" data-action="save-settings">' + icon('check', 16) + '保存设置</button>' +
       '</div></div>' +
-      '<div class="settings-layout">' + companyCard + bankCard + defaultsCard + numberingCard + backupCard + '</div>';
+      '<div class="settings-layout">' + companyCard + bankCard + defaultsCard + numberingCard + crmCard + backupCard + '</div>';
 
     return {
       html: html,
@@ -2564,6 +2585,7 @@
       ['换电脑或换浏览器怎么办？', '在「设置 → 数据备份与迁移」中导出 JSON 备份，在新设备的同一页面导入即可。注意清理浏览器缓存或使用隐私模式可能导致数据丢失。'],
       ['单证编号如何管理和避免跳号？', '编号只在真正预览、打印或生成单证时消耗一次；同一订单重复预览会复用已生成编号。可在设置中调整每个单证类型的下一个序号与位数。'],
       ['智能填单能识别哪些内容？准确吗？', '支持粘贴文字，或上传 TXT / Markdown / CSV / TSV / JSON / Word (.docx) / Excel (.xlsx)，在浏览器本地识别买方、单证号、日期、贸易术语、付款、港口、船期、信用证、唛头、费用与货物明细。识别基于规则与源文件排版，标签清晰、表头规范的资料准确率更高，结果必须逐项核对后再应用。'],
+      ['客户通同步如何工作？数据会上传吗？', '客户通（joyzqj.github.io/customercrm/）与单证通同域，数据保存在同一浏览器 localStorage。单证通只读取其中「已成交」客户并导入客户库，不写入客户通、不上传外网。换浏览器/设备或使用 file:// 时不共享数据；客户通无地址/邮箱/电话，导入后需手动补充。'],
       ['为什么预览页提示「单证引擎尚未就绪」？', '这是开发或部署过程中缺少单证模板文件的临时状态，应用与数据仍正常。待单证模板加载完成后刷新页面即可恢复；可联系技术同事检查 js/doc-templates.js。'],
       ['修改客户库会影响历史订单吗？', '不会。订单保存的是买方信息快照，客户库用于下次新建订单时快速填入；删除客户或产品同样不影响历史订单内容。'],
       ['生成的单证可以直接用于官方申报吗？', '本工具生成的商业发票、装箱单、合同等常规贸易单证可直接用于业务往来；原产地证、报关资料等涉及官方机构的文件请以官方签发版本与最新法规要求为准。']
@@ -2581,10 +2603,20 @@
       return '<li>' + icon('check-circle', 15) + '<span><b>' + esc(row[0]) + '</b>：' + esc(row[1]) + '</span></li>';
     }).join('');
 
+    var crmHelpTips = [
+      ['自动 + 手动同步', '启动时自动检测客户通数据；客户通数据变化并触发 storage 事件后约 0.7 秒自动同步。也可在客户库点击「从客户通同步」手动选择，或在设置中立即同步。'],
+      ['只同步「已成交」客户', '客户通中 dealStatus 为「已成交」的客户才会进入候选列表；未成交客户不会导入。自动同步只新增客户，绝不覆盖你手填的信息。'],
+      ['同浏览器、同域名才有效', '通过读取同一浏览器 localStorage 中的 customer-crm.v1 实现，无需 API。换浏览器、换设备、使用 file:// 或切换到其他自定义域名都无法共享数据。'],
+      ['缺失字段需手动补充', '客户通不提供地址、邮箱、电话、税号：同步后这些字段留空并标记「待补充」，不会编造；手动同步的「更新已有客户信息」也只会补充空字段，不会清空已有内容。'],
+      ['只读与隐私', '单证通只读取客户通数据，绝不写入或修改客户通；同步全程不发起网络请求、不上传服务器。客户通数据属于敏感资料，请勿在 joyzqj.github.io 下放置不可信的第三方页面。']
+    ].map(function (row) {
+      return '<li>' + icon('check-circle', 15) + '<span><b>' + esc(row[0]) + '</b>：' + esc(row[1]) + '</span></li>';
+    }).join('');
+
     var html = '<div class="page-head"><div class="page-head-main">' +
       '<div class="page-eyebrow">' + icon('help', 13) + '使用说明</div>' +
       '<h2 class="page-title">三步生成外贸单证</h2>' +
-      '<p class="page-sub">免部署 · 零后端 · 本地智能填单 · 数据留在本机浏览器 · 一键打印 PDF</p></div>' +
+      '<p class="page-sub">免部署 · 零后端 · 本地智能填单 · 客户通同步 · 数据留在本机浏览器 · 一键打印 PDF</p></div>' +
       '<div class="page-actions"><button class="btn btn--primary" type="button" data-action="new-order">' + icon('plus', 16) + '立即开单</button></div></div>' +
       '<div class="steps" style="margin-bottom:20px">' + stepsHtml + '</div>' +
       '<div class="help-grid">' +
@@ -2597,6 +2629,12 @@
       '<div class="rec-privacy" style="margin-bottom:12px">' + icon('shield-check', 14) + '<span>本地解析 · 文件不会上传 · 不上传服务器、不调用任何 API</span></div>' +
       '<ul class="help-list">' + smartFillTips + '</ul>' +
       '<p class="field-hint" style="margin-top:10px">入口：订单编辑页右上角「智能填单」；仪表盘或订单页「识别建单」会先创建草稿再打开识别弹窗。</p>' +
+      '</div></div>' +
+      '<div class="card" id="help-crm-sync"><div class="card-head"><div class="card-title">' + icon('users', 16) + '客户通客户同步（v1.2 新增）' +
+      '<span class="card-sub">同浏览器读取客户通「已成交」客户，自动/手动导入客户库</span></div></div><div class="card-body">' +
+      '<div class="crm-privacy" style="margin-bottom:12px">' + icon('shield-check', 14) + '<span>同浏览器直连 · 只读客户通 · 不上传服务器 · 不调用任何 API</span></div>' +
+      '<ul class="help-list">' + crmHelpTips + '</ul>' +
+      '<p class="field-hint" style="margin-top:10px">入口：客户管理页「从客户通同步」；设置页「客户通同步」卡片可开关自动同步或立即同步。</p>' +
       '</div></div>' +
       '<div class="card"><div class="card-head"><div class="card-title">' + icon('keyboard', 16) + '键盘快捷键与提示</div></div><div class="card-body">' +
       '<ul class="help-list">' +
@@ -3579,6 +3617,886 @@
   }
 
   /* ================================================================
+   *  CustomerCRM sync (v1.2) — same-browser, read-only local sync
+   * ================================================================ */
+
+  var CRM_STORAGE_KEY = 'customer-crm.v1';
+  var CRM_META_KEY = 'tradedocs.crm-meta.v1';
+  var CRM_SETTINGS_KEY = 'tradedocs.integrations.v1';
+  var CRM_AUTO_DEBOUNCE = 700;
+  var CRM_VISIBILITY_THROTTLE = 60000;
+
+  var crmIntegration = { customerCrm: { autoSync: true, lastSyncAt: '' } };
+  var crmIntegrationLoaded = false;
+  var crmIntegrationWriteWarned = false;
+  var crmMetaRegistry = { accounts: {} };
+  var crmSyncState = null;
+  var crmAutoToastShown = false;
+  var crmAutoTimer = null;
+  var crmLastVisibilityCheck = 0;
+  var crmSyncing = false;
+
+  function crmNowISO() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' +
+      p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function crmSafeStorage() {
+    try { return window.localStorage; } catch (err) { return null; }
+  }
+  function crmSafeGet(key) {
+    try {
+      var storage = crmSafeStorage();
+      return storage ? storage.getItem(key) : null;
+    } catch (err) { return null; }
+  }
+  function crmSafeSet(key, value) {
+    try {
+      var storage = crmSafeStorage();
+      if (!storage) return false;
+      storage.setItem(key, value);
+      return true;
+    } catch (err) { return false; }
+  }
+
+  function crmEngineRef() {
+    return TD.crmSync && typeof TD.crmSync === 'object' ? TD.crmSync : null;
+  }
+
+  function loadCrmIntegration() {
+    var cfg = { customerCrm: { autoSync: true, lastSyncAt: '' } };
+    var raw = crmSafeGet(CRM_SETTINGS_KEY);
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        var source = parsed && parsed.customerCrm && typeof parsed.customerCrm === 'object' ? parsed.customerCrm : null;
+        if (source) {
+          cfg.customerCrm.autoSync = source.autoSync !== false;
+          cfg.customerCrm.lastSyncAt = String(source.lastSyncAt || '');
+        }
+      } catch (err) { /* ignore corrupt integration settings */ }
+    } else {
+      // Recover from the main state file when it happens to carry integrations.
+      var stateRaw = crmSafeGet('tradedocs.v1');
+      if (stateRaw) {
+        try {
+          var parsedState = JSON.parse(stateRaw);
+          var integrations = parsedState && parsedState.settings && parsedState.settings.integrations;
+          var fromCrm = integrations && integrations.customerCrm;
+          if (fromCrm && typeof fromCrm === 'object') {
+            cfg.customerCrm.autoSync = fromCrm.autoSync !== false;
+            cfg.customerCrm.lastSyncAt = String(fromCrm.lastSyncAt || '');
+          }
+        } catch (err) { /* ignore */ }
+      }
+    }
+    crmIntegration = cfg;
+    crmIntegrationLoaded = true;
+    return cfg;
+  }
+
+  function getCrmSettings() {
+    if (!crmIntegrationLoaded) loadCrmIntegration();
+    return crmIntegration.customerCrm;
+  }
+
+  function mirrorCrmIntegrationIntoState() {
+    var state = store.getState && store.getState();
+    if (!state || !state.settings) return;
+    state.settings.integrations = core.clone(crmIntegration);
+  }
+
+  function saveCrmIntegration() {
+    var ok = crmSafeSet(CRM_SETTINGS_KEY, JSON.stringify(crmIntegration));
+    mirrorCrmIntegrationIntoState();
+    try { store.save(); } catch (err) { /* ignore */ }
+    if (!ok && !crmIntegrationWriteWarned) {
+      crmIntegrationWriteWarned = true;
+      toast('无法保存客户通同步设置（浏览器存储不可用或空间不足）', 'warn');
+    }
+  }
+
+  function setCrmAutoSync(enabled) {
+    var settings = getCrmSettings();
+    settings.autoSync = !!enabled;
+    saveCrmIntegration();
+    toast(settings.autoSync ? '已开启客户通自动同步' : '已关闭客户通自动同步', 'info');
+    refreshCrmStatusUI();
+  }
+
+  function setCrmLastSync(iso) {
+    getCrmSettings().lastSyncAt = iso || crmNowISO();
+    saveCrmIntegration();
+  }
+
+  function normalizeCrmName(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[\s\.,，。·'"“”‘’\-_/\\()（）&]+/g, '');
+  }
+
+  function loadCrmMetaRegistry() {
+    var registry = { accounts: {} };
+    try {
+      var raw = crmSafeGet(CRM_META_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.accounts && typeof parsed.accounts === 'object') {
+          registry.accounts = parsed.accounts;
+        }
+      }
+    } catch (err) { /* ignore corrupt metadata */ }
+    crmMetaRegistry = registry;
+  }
+
+  function writeCrmMetaRegistry() {
+    crmSafeSet(CRM_META_KEY, JSON.stringify({ version: 1, accounts: crmMetaRegistry.accounts }));
+  }
+
+  function hydrateCrmMetaFromCustomers(customers) {
+    var changed = false;
+    (Array.isArray(customers) ? customers : []).forEach(function (customer) {
+      if (!customer || !customer.id) return;
+      if (customer.source === 'customer-crm' || customer.externalId) {
+        var prior = crmMetaRegistry.accounts[customer.id] || {};
+        crmMetaRegistry.accounts[customer.id] = {
+          source: 'customer-crm',
+          externalId: String(customer.externalId || prior.externalId || ''),
+          crmMeta: customer.crmMeta || prior.crmMeta || {},
+          syncedAt: String(customer.syncedAt || prior.syncedAt || '')
+        };
+        changed = true;
+      }
+    });
+    if (changed) writeCrmMetaRegistry();
+  }
+
+  function hydrateCrmIntegrationFromPayload(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    var integrations = payload.settings && payload.settings.integrations;
+    var fromCrm = integrations && integrations.customerCrm;
+    if (fromCrm && typeof fromCrm === 'object') {
+      var settings = getCrmSettings();
+      if (fromCrm.autoSync !== undefined) settings.autoSync = fromCrm.autoSync !== false;
+      if (fromCrm.lastSyncAt !== undefined) settings.lastSyncAt = String(fromCrm.lastSyncAt || '');
+      crmSafeSet(CRM_SETTINGS_KEY, JSON.stringify(crmIntegration));
+    }
+  }
+
+  function hydrateCrmMetaFromRawState() {
+    var raw = crmSafeGet('tradedocs.v1');
+    if (!raw) return;
+    try {
+      var parsed = JSON.parse(raw);
+      hydrateCrmMetaFromCustomers(parsed && parsed.customers);
+    } catch (err) { /* ignore */ }
+  }
+
+  function registerMergedCustomers(customers) {
+    var changed = false;
+    (customers || []).forEach(function (customer) {
+      if (!customer || !customer.id) return;
+      if (customer.source !== 'customer-crm' && !customer.externalId) return;
+      crmMetaRegistry.accounts[customer.id] = {
+        source: 'customer-crm',
+        externalId: String(customer.externalId || ''),
+        crmMeta: customer.crmMeta && typeof customer.crmMeta === 'object' ? customer.crmMeta : {},
+        syncedAt: String(customer.syncedAt || '')
+      };
+      changed = true;
+    });
+    if (changed) writeCrmMetaRegistry();
+  }
+
+  function augmentCrmCustomers(customers) {
+    var list = Array.isArray(customers) ? customers : [];
+    var accounts = {};
+    list.forEach(function (customer) {
+      if (!customer || !customer.id) return;
+      var prior = crmMetaRegistry.accounts[customer.id];
+      if (customer.source === 'customer-crm' || customer.externalId) {
+        accounts[customer.id] = {
+          source: 'customer-crm',
+          externalId: String(customer.externalId || (prior && prior.externalId) || ''),
+          crmMeta: customer.crmMeta || (prior && prior.crmMeta) || {},
+          syncedAt: String(customer.syncedAt || (prior && prior.syncedAt) || '')
+        };
+      } else if (prior) {
+        accounts[customer.id] = prior;
+      }
+    });
+    if (JSON.stringify(accounts) !== JSON.stringify(crmMetaRegistry.accounts)) {
+      crmMetaRegistry.accounts = accounts;
+      writeCrmMetaRegistry();
+    }
+    return list.map(function (customer) {
+      var meta = crmMetaRegistry.accounts[customer.id];
+      if (!meta) return customer;
+      var merged = {};
+      Object.keys(customer).forEach(function (key) { merged[key] = customer[key]; });
+      merged.source = 'customer-crm';
+      merged.externalId = meta.externalId;
+      merged.crmMeta = meta.crmMeta;
+      merged.syncedAt = meta.syncedAt;
+      return merged;
+    });
+  }
+
+  function rehydratePersistentState() {
+    mirrorCrmIntegrationIntoState();
+    var state = store.getState && store.getState();
+    if (state && Array.isArray(state.customers)) {
+      state.customers = augmentCrmCustomers(state.customers);
+    }
+    try { store.save(); } catch (err) { /* storage failure handled by store notices */ }
+  }
+
+  function installPersistentStateShim() {
+    var names = ['setState', 'saveSettings', 'importJSON', 'resetDemo', 'clearAll', 'saveCustomer', 'deleteCustomer'];
+    names.forEach(function (name) {
+      var original = store[name];
+      if (typeof original !== 'function' || original.__crmWrapped) return;
+      var wrapped = function () {
+        var args = Array.prototype.slice.call(arguments);
+        if (name === 'importJSON' && typeof args[0] === 'string') {
+          try {
+            var imported = JSON.parse(args[0]);
+            hydrateCrmMetaFromCustomers(imported && imported.customers);
+            hydrateCrmIntegrationFromPayload(imported);
+          } catch (err) { /* engine/store validation will report the real import error */ }
+        }
+        var result = original.apply(store, args);
+        try { rehydratePersistentState(); } catch (err) { console.error('[TradeDocs] 客户通状态回填失败', err); }
+        return result;
+      };
+      wrapped.__crmWrapped = true;
+      store[name] = wrapped;
+    });
+  }
+
+  function initCrmIntegration() {
+    loadCrmIntegration();
+    loadCrmMetaRegistry();
+    hydrateCrmMetaFromRawState();
+    installPersistentStateShim();
+    rehydratePersistentState();
+  }
+
+  function readCrmSafe() {
+    var engine = crmEngineRef();
+    if (!engine || typeof engine.read !== 'function') {
+      return { available: false, reason: 'engine-missing', total: 0, won: [], customers: [], warnings: [], savedAt: '' };
+    }
+    try {
+      var result = engine.read();
+      if (!result || typeof result !== 'object') throw new Error('读取结果为空');
+      return {
+        available: !!result.available,
+        reason: String(result.reason || ''),
+        total: core.num(result.total, 0),
+        won: Array.isArray(result.won) ? result.won : [],
+        customers: Array.isArray(result.customers) ? result.customers : [],
+        warnings: Array.isArray(result.warnings) ? result.warnings : [],
+        savedAt: String(result.savedAt || '')
+      };
+    } catch (err) {
+      return {
+        available: false,
+        reason: '读取客户通数据失败：' + (err && err.message ? err.message : '未知错误'),
+        total: 0, won: [], customers: [], warnings: [], savedAt: ''
+      };
+    }
+  }
+
+  function crmStatusInfo() {
+    var engine = crmEngineRef();
+    var read = readCrmSafe();
+    var settings = getCrmSettings();
+    var state = 'unavailable';
+    if (!engine) state = 'engine-missing';
+    else if (read.available && (read.won || []).length) state = 'connected';
+    else if (read.available) state = 'empty';
+    return {
+      state: state,
+      engine: !!engine,
+      read: read,
+      autoSync: settings.autoSync,
+      lastSyncAt: settings.lastSyncAt
+    };
+  }
+
+  function crmStatusText(status) {
+    if (status.state === 'engine-missing') return '客户通同步引擎未加载';
+    if (status.state === 'connected') return '客户通 · 已成交 ' + status.read.won.length;
+    if (status.state === 'empty') return '客户通 · 暂无已成交';
+    return '未检测到客户通数据';
+  }
+
+  function crmStatusBadgeHTML(status) {
+    var tone = status.state === 'connected' ? 'ok' : status.state === 'empty' ? 'warn' : 'muted';
+    var dotClass = status.state === 'connected' ? 'crm-status-dot--ok' : status.state === 'empty' ? 'crm-status-dot--warn' : '';
+    return '<span class="crm-status crm-status--' + tone + '" data-crm-status-badge data-crm-status="' + esc(status.state) + '" title="' +
+      esc(status.state === 'connected' ? '同浏览器客户通数据已连接（只读）' : status.state === 'empty' ? '已找到客户通数据，但暂无已成交客户' : status.state === 'engine-missing' ? '同步引擎 js/crm-sync.js 尚未加载' : '未在当前浏览器检测到客户通数据（customer-crm.v1）') + '">' +
+      '<span class="crm-status-dot ' + dotClass + '"></span>' + esc(crmStatusText(status)) + '</span>';
+  }
+
+  function refreshCrmStatusUI() {
+    var status = crmStatusInfo();
+    var badgeHtml = crmStatusBadgeHTML(status);
+    $$('[data-crm-status-badge]').forEach(function (el) {
+      var wrap = document.createElement('span');
+      wrap.innerHTML = badgeHtml;
+      if (wrap.firstChild) el.parentNode.replaceChild(wrap.firstChild, el);
+    });
+    $$('[data-crm-sync-time]').forEach(function (el) {
+      el.textContent = status.lastSyncAt ? '上次同步：' + status.lastSyncAt.replace('T', ' ').slice(0, 16) : '尚未同步';
+    });
+  }
+
+  function crmFindMatch(existingCustomers, record) {
+    if (!record) return null;
+    var externalId = String(record.id || '');
+    var company = normalizeCrmName(record.companyName || record.customerName);
+    var contact = normalizeCrmName(record.customerName);
+    var list = Array.isArray(existingCustomers) ? existingCustomers : [];
+    var i;
+    if (externalId) {
+      for (i = 0; i < list.length; i++) {
+        if (list[i] && String(list[i].externalId || '') === externalId) return list[i];
+      }
+    }
+    for (i = 0; i < list.length; i++) {
+      var name = normalizeCrmName(list[i] && (list[i].nameEn || list[i].nameCn));
+      if (company && name && name === company) return list[i];
+    }
+    for (i = 0; i < list.length; i++) {
+      var contactName = normalizeCrmName(list[i] && (list[i].contact || list[i].nameEn));
+      if (contact && contactName && contactName === contact) return list[i];
+    }
+    return null;
+  }
+
+  function crmMissingCodes(customer) {
+    var missing = [];
+    if (!customer || !String((customer.addressEn || '') + (customer.addressCn || '')).trim()) missing.push('address');
+    if (!customer || !String(customer.email || '').trim()) missing.push('email');
+    if (!customer || !String(customer.tel || '').trim()) missing.push('tel');
+    return missing;
+  }
+
+  var CRM_MISSING_LABELS = { address: '地址', email: '邮箱', tel: '电话' };
+
+  function crmMissingHTML(customer, withPrefix) {
+    var missing = crmMissingCodes(customer);
+    if (!missing.length) return '<span class="crm-missing-ok">' + icon('check', 12) + '资料齐全</span>';
+    var labels = missing.map(function (code) { return CRM_MISSING_LABELS[code] || code; }).join(' · ');
+    return '<span class="crm-missing" data-crm-missing="' + esc(missing.join(' ')) + '">' +
+      icon('alert', 12) + esc((withPrefix ? '待补充：' : '') + labels) + '</span>';
+  }
+
+  function crmCountryDisplay(record) {
+    var raw = String(record && record.country || '').trim();
+    if (!raw) return { en: '—', raw: '' };
+    var engine = crmEngineRef();
+    var mapped = engine && engine.COUNTRIES ? engine.COUNTRIES[raw] : '';
+    if (!mapped) mapped = raw;
+    return { en: mapped, raw: raw !== mapped ? raw : '' };
+  }
+
+  function crmBuildCandidates(read) {
+    var existing = store.getState().customers || [];
+    var seen = {};
+    return (read.won || []).map(function (record) {
+      var id = String(record && record.id || '');
+      if (!id || seen[id]) return null;
+      seen[id] = true;
+      var matched = crmFindMatch(existing, record);
+      var country = crmCountryDisplay(record);
+      return {
+        id: id,
+        record: record,
+        company: String((record && (record.companyName || record.customerName)) || '').trim() || '未命名客户',
+        contact: String(record && record.customerName || '').trim(),
+        countryEn: country.en,
+        countryRaw: country.raw,
+        product: String((record && (record.product || record.productModel)) || '').trim(),
+        followupStatus: String(record && record.followupStatus || ''),
+        matched: !!matched,
+        matchedId: matched ? matched.id : '',
+        missing: crmMissingCodes(matched)
+      };
+    }).filter(Boolean);
+  }
+
+  function crmSelectedCandidates() {
+    if (!crmSyncState) return [];
+    return crmSyncState.candidates.filter(function (candidate) {
+      return crmSyncState.selected[candidate.id] !== false;
+    });
+  }
+
+  function crmStatsHTML() {
+    var state = crmSyncState;
+    if (!state) return '';
+    var read = state.read;
+    var candidates = state.candidates || [];
+    var synced = candidates.filter(function (c) { return c.matched; }).length;
+    var pending = candidates.filter(function (c) { return !c.matched; }).length;
+    return '<div class="crm-stats">' +
+      '<span class="crm-stat">' + icon('users', 13) + '客户通总客户 <b>' + core.fmtQty(read.total) + '</b></span>' +
+      '<span class="crm-stat">' + icon('check-circle', 13) + '已成交 <b>' + core.fmtQty(read.won.length) + '</b></span>' +
+      '<span class="crm-stat">' + icon('link', 13) + '已同步 <b>' + synced + '</b></span>' +
+      '<span class="crm-stat">' + icon('plus', 13) + '待新增 <b>' + pending + '</b></span>' +
+      '</div>';
+  }
+
+  function crmCandidateRowsHTML() {
+    var state = crmSyncState;
+    return state.candidates.map(function (candidate) {
+      var checked = state.selected[candidate.id] !== false;
+      var missingHtml = candidate.missing.length
+        ? '<span class="crm-missing" data-crm-missing="' + esc(candidate.missing.join(' ')) + '">' + icon('alert', 12) +
+          esc('待补充：' + candidate.missing.map(function (code) { return CRM_MISSING_LABELS[code]; }).join(' · ')) + '</span>'
+        : '<span class="crm-missing-ok">' + icon('check', 12) + '资料齐全</span>';
+      return '<tr data-crm-row="' + esc(candidate.id) + '"' + (checked ? ' class="is-on"' : '') + '>' +
+        '<td class="crm-check-cell"><input type="checkbox" class="checkbox" data-crm-customer="' + esc(candidate.id) + '"' +
+        (checked ? ' checked' : '') + ' aria-label="选择客户 ' + esc(candidate.company) + '"></td>' +
+        '<td><span class="cell-primary">' + esc(candidate.company) + '</span>' +
+        '<div class="cell-sub">' + (candidate.matched ? '已在客户库 · 将关联' : '将新增到客户库') + '</div></td>' +
+        '<td>' + esc(candidate.contact || '—') + '</td>' +
+        '<td>' + esc(candidate.countryEn) + (candidate.countryRaw ? '<div class="cell-sub">' + esc(candidate.countryRaw) + '</div>' : '') + '</td>' +
+        '<td><span class="badge badge--done"><span class="badge-dot"></span>已成交</span>' +
+        (candidate.followupStatus ? '<div class="cell-sub">' + esc(candidate.followupStatus) + '</div>' : '') + '</td>' +
+        '<td>' + esc(candidate.product || '—') + '</td>' +
+        '<td>' + missingHtml + '</td></tr>';
+    }).join('');
+  }
+
+  function crmReasonText(reason) {
+    var map = {
+      missing: '未检测到客户通数据：本浏览器可能未使用过客户通，或数据已被清除。',
+      disabled: '浏览器本地存储不可用或被禁用，无法读取客户通数据。',
+      corrupt: '客户通数据格式损坏，无法解析；可在客户通重新保存一次数据后重试。',
+      unavailable: '当前环境无法访问本地存储，无法读取客户通数据。',
+      error: '读取客户通数据时出现异常。',
+      'engine-missing': '客户通同步引擎尚未加载。'
+    };
+    return map[reason] || '';
+  }
+
+  function crmSyncBodyHTML() {
+    var state = crmSyncState;
+    if (state.view === 'engine-missing') {
+      return '<div class="crm-sync">' +
+        '<div class="alert alert--warn">' + icon('alert', 16) +
+        '<span>客户通同步引擎尚未加载（<span class="mono">js/crm-sync.js</span>）。请刷新页面后重试，或联系技术同事检查该文件是否存在。</span></div>' +
+        '<div class="crm-guidance"><h3>' + icon('help', 16) + '如何启用客户通同步</h3>' +
+        '<ol class="crm-steps">' +
+        '<li>确认单证通与客户通部署在同一域名（<span class="mono">joyzqj.github.io</span>）。</li>' +
+        '<li>在本浏览器打开客户通，录入客户并标记为「已成交」。</li>' +
+        '<li>回到单证通刷新页面，或点击「重新检测」。</li>' +
+        '</ol></div>' +
+        '<div class="crm-privacy">' + icon('shield-check', 15) + '<div><strong>本地只读 · 文件不会上传</strong><span>单证通只读取当前浏览器客户通的 localStorage，不写入客户通、不发起任何网络请求。</span></div></div>' +
+        '</div>';
+    }
+    if (state.view === 'no-data') {
+      var readWarnings = (state.read.warnings || []).map(function (warning) {
+        var msg = typeof warning === 'string' ? warning : (warning && (warning.message || warning.code)) || '';
+        return msg;
+      }).filter(Boolean);
+      var noDataReason = readWarnings.length ? readWarnings.join('；') : crmReasonText(state.read.reason);
+      return '<div class="crm-sync">' +
+        '<div class="crm-privacy">' + icon('shield-check', 15) + '<div><strong>同浏览器直连 · 只读 · 不上传</strong><span>单证通与客户通共用当前浏览器；只在同一浏览器、同一域名下有效，数据不会离开本机。</span></div></div>' +
+        (noDataReason ? '<div class="alert alert--warn">' + icon('alert', 16) + '<span>' + esc(noDataReason) + '</span></div>' : '') +
+        '<div class="crm-guidance"><h3>' + icon('help', 16) + '未检测到客户通数据</h3>' +
+        '<p class="field-hint">客户通与单证通需要运行在同一浏览器、同一域名下（例如 <span class="mono">joyzqj.github.io</span>）。请按以下步骤操作：</p>' +
+        '<ol class="crm-steps">' +
+        '<li>在这个浏览器打开客户通（joyzqj.github.io/customercrm/），录入客户。</li>' +
+        '<li>在客户通把目标客户标记为「已成交」。</li>' +
+        '<li>回到单证通，点击下方「重新检测」或刷新页面；自动同步开启时也会自动导入。</li>' +
+        '</ol>' +
+        '<p class="field-hint">未检测到数据的原因：未打开过客户通、客户通中没有已成交客户、浏览器 localStorage 被清理，或当前页面是 file:// / 其他域名。</p></div>' +
+        '</div>';
+    }
+    var read = state.read;
+    var selectedCount = state.candidates.filter(function (c) { return state.selected[c.id] !== false; }).length;
+    var warnings = read.warnings.map(function (warning) {
+      var msg = typeof warning === 'string' ? warning : (warning && (warning.message || warning.code)) || '';
+      return '<div class="crm-warning">' + icon('alert', 14) + '<span>' + esc(msg) + '</span></div>';
+    }).join('');
+    var candidates = crmSyncState.candidates;
+    var table = candidates.length
+      ? '<div class="table-wrap crm-table-wrap"><table class="data crm-table"><thead><tr>' +
+        '<th class="crm-check-cell"><input type="checkbox" class="checkbox" data-crm-select-all="1" aria-label="全选已成交客户"></th>' +
+        '<th>公司</th><th>联系人</th><th>国家 / 地区</th><th>状态</th><th>产品</th><th>缺失资料</th>' +
+        '</tr></thead><tbody>' + crmCandidateRowsHTML() + '</tbody></table></div>'
+      : '<div class="crm-empty">' + icon('users', 22) + '<p>客户通里还没有「已成交」客户。先在客户通把客户标记为已成交，再来同步。</p></div>';
+    return '<div class="crm-sync">' +
+      '<div class="crm-privacy">' + icon('shield-check', 15) + '<div><strong>同浏览器直连 · 只读 · 不上传</strong><span>读取当前浏览器中客户通的 localStorage（customer-crm.v1），不会修改客户通数据，也不会发起网络请求。仅同步「已成交」客户。</span></div></div>' +
+      (warnings ? '<div class="crm-warnings">' + warnings + '</div>' : '') +
+      crmStatsHTML() +
+      '<div class="crm-table-block"><div class="crm-table-head"><span>已成交客户 · 已选 <b data-crm-selected-count>' + selectedCount + '</b> 家</span>' +
+      '<span class="field-hint">客户通不提供地址、邮箱、电话，导入后需在客户库手动补充。</span></div>' + table + '</div>' +
+      '<div class="crm-options">' +
+      '<label class="switch"><input type="checkbox" class="checkbox" data-testid="crm-auto-toggle" data-crm-auto-toggle="1"' + (state.autoSync ? ' checked' : '') + '><span>自动同步已成交客户</span></label>' +
+      '<label class="switch"><input type="checkbox" class="checkbox" data-testid="crm-update-existing" data-crm-update-existing="1"' + (state.updateExisting ? ' checked' : '') + '><span>更新已有客户信息（仅补充空字段）</span></label>' +
+      '<span class="crm-last-sync" data-crm-sync-time>' + esc(state.lastSyncAt ? '上次同步：' + state.lastSyncAt.replace('T', ' ').slice(0, 16) : '尚未同步') + '</span>' +
+      '</div>' +
+      '<div class="crm-note">' + icon('info', 14) +
+      '<span>自动同步只新增客户、绝不会覆盖你手填的地址/邮箱/电话；「更新已有客户信息」仅在手动同步时补充空字段。</span></div>' +
+      '</div>';
+  }
+
+  function crmSyncFooterHTML() {
+    var state = crmSyncState;
+    if (!state) return '';
+    var busy = !!state.busy;
+    if (state.view === 'engine-missing') {
+      return '<button class="btn" type="button" data-action="close-modal">取消</button>' +
+        '<button class="btn btn--primary" type="button" data-action="reload-page">' + icon('refresh', 15) + '重新加载页面</button>';
+    }
+    if (state.view === 'no-data') {
+      return '<button class="btn" type="button" data-action="close-modal">取消</button>' +
+        '<button class="btn btn--primary" type="button" data-action="crm-sync-refresh">' + icon('refresh', 15) + '重新检测</button>';
+    }
+    var selectedCount = state.candidates.filter(function (c) { return state.selected[c.id] !== false; }).length;
+    return '<button class="btn" type="button" data-action="close-modal">取消</button>' +
+      '<span class="crm-foot-spacer"></span>' +
+      '<button class="btn" type="button" data-testid="crm-sync-all" data-action="crm-sync-all"' + (busy ? ' disabled' : '') + '>' + icon('layers', 15) + '全部同步（' + state.candidates.length + '）</button>' +
+      '<button class="btn btn--primary" type="button" data-testid="crm-sync-run" data-action="crm-sync-run"' + (busy || !selectedCount ? ' disabled' : '') + '>' + icon('download', 15) + '同步选中（<span data-crm-selected-count>' + selectedCount + '</span>）</button>';
+  }
+
+  function renderCrmSyncModal() {
+    if (!crmSyncState) return;
+    var host = $('#crm-sync-modal');
+    if (!host) return;
+    host.innerHTML = crmSyncBodyHTML();
+    var foot = $('.modal-foot');
+    if (foot) foot.innerHTML = crmSyncFooterHTML();
+    var modal = host.closest ? host.closest('.modal') : null;
+    if (modal) modal.setAttribute('aria-busy', crmSyncState.busy ? 'true' : 'false');
+  }
+
+  function refreshCrmSelectedUI() {
+    if (!crmSyncState) return;
+    var count = crmSyncState.candidates.filter(function (c) { return crmSyncState.selected[c.id] !== false; }).length;
+    $$('[data-crm-selected-count]').forEach(function (el) { el.textContent = count; });
+    var runBtn = $('[data-testid="crm-sync-run"]');
+    if (runBtn) runBtn.disabled = !!crmSyncState.busy || count === 0;
+    var allBox = $('[data-crm-select-all]');
+    if (allBox) allBox.checked = crmSyncState.candidates.length > 0 && count === crmSyncState.candidates.length;
+  }
+
+  function mountCrmSyncModal() {
+    var host = $('#crm-sync-modal');
+    if (!host || host.getAttribute('data-crm-bound') === '1') return;
+    host.setAttribute('data-crm-bound', '1');
+    host.addEventListener('change', function (e) {
+      var el = e.target;
+      if (!el || !el.getAttribute) return;
+      var customerId = el.getAttribute('data-crm-customer');
+      if (customerId) {
+        if (!crmSyncState) return;
+        crmSyncState.selected[customerId] = !!el.checked;
+        var row = el.closest ? el.closest('tr') : null;
+        if (row) row.classList.toggle('is-on', !!el.checked);
+        refreshCrmSelectedUI();
+        return;
+      }
+      if (el.getAttribute('data-crm-select-all')) {
+        if (!crmSyncState) return;
+        var checked = !!el.checked;
+        crmSyncState.candidates.forEach(function (candidate) { crmSyncState.selected[candidate.id] = checked; });
+        renderCrmSyncModal();
+        return;
+      }
+      if (el.getAttribute('data-crm-auto-toggle')) {
+        setCrmAutoSync(!!el.checked);
+        return;
+      }
+      if (el.getAttribute('data-crm-update-existing')) {
+        if (crmSyncState) crmSyncState.updateExisting = !!el.checked;
+      }
+    });
+  }
+
+  function openCrmSyncModal() {
+    flushSettingsDraft();
+    var engine = crmEngineRef();
+    var read = readCrmSafe();
+    crmSyncState = {
+      read: read,
+      candidates: [],
+      selected: {},
+      updateExisting: false,
+      autoSync: getCrmSettings().autoSync,
+      lastSyncAt: getCrmSettings().lastSyncAt,
+      busy: false,
+      view: 'review'
+    };
+    if (!engine) crmSyncState.view = 'engine-missing';
+    else if (!read.available) crmSyncState.view = 'no-data';
+    else {
+      crmSyncState.candidates = crmBuildCandidates(read);
+      crmSyncState.candidates.forEach(function (candidate) {
+        crmSyncState.selected[candidate.id] = !candidate.matched;
+      });
+      if (!crmSyncState.candidates.length) crmSyncState.view = 'review';
+    }
+    openModal({
+      size: 'xl',
+      title: '从客户通同步',
+      subtitle: '同浏览器直连 · 只读 · 不上传 · 仅同步「已成交」客户',
+      body: '<div id="crm-sync-modal" aria-live="polite"></div>',
+      footer: '<button class="btn" type="button" data-action="close-modal">取消</button>',
+      onClose: function () { crmSyncState = null; }
+    });
+    mountCrmSyncModal();
+    renderCrmSyncModal();
+  }
+
+  function crmRefreshModal() {
+    var engine = crmEngineRef();
+    var read = readCrmSafe();
+    if (!crmSyncState) return;
+    crmSyncState.read = read;
+    crmSyncState.busy = false;
+    crmSyncState.view = engine ? 'review' : 'engine-missing';
+    if (engine) {
+      crmSyncState.candidates = crmBuildCandidates(read);
+      crmSyncState.selected = {};
+      crmSyncState.candidates.forEach(function (candidate) {
+        crmSyncState.selected[candidate.id] = !candidate.matched;
+      });
+      if (!read.available) crmSyncState.view = 'no-data';
+    }
+    renderCrmSyncModal();
+    toast(read.available ? '已重新检测客户通数据' : '仍未检测到客户通数据', read.available ? 'success' : 'info');
+  }
+
+  function crmApplyMerge(records, options) {
+    var engine = crmEngineRef();
+    if (!engine || typeof engine.merge !== 'function') {
+      return { ok: false, reason: 'engine-missing', message: '客户通同步引擎未加载' };
+    }
+    var existing = store.getState().customers || [];
+    var merged;
+    try {
+      merged = engine.merge(existing, records, {
+        onlyWon: true,
+        updateExisting: !!(options && options.updateExisting)
+      });
+    } catch (err) {
+      console.error('[TradeDocs] 客户通合并失败', err);
+      return { ok: false, reason: 'merge-error', message: err && err.message ? err.message : String(err) };
+    }
+    if (!merged || !Array.isArray(merged.customers)) {
+      return { ok: false, reason: 'merge-invalid', message: '同步引擎返回的结果不完整' };
+    }
+    registerMergedCustomers(merged.customers);
+    try {
+      store.setState(function (state) {
+        state.customers = merged.customers;
+        return state;
+      });
+    } catch (err) {
+      return { ok: false, reason: 'store-error', message: err && err.message ? err.message : '保存客户库失败' };
+    }
+    rehydratePersistentState();
+    setCrmLastSync(crmNowISO());
+    return {
+      ok: true,
+      added: core.num(merged.added, 0),
+      updated: core.num(merged.updated, 0),
+      linked: core.num(merged.linked, 0),
+      skipped: core.num(merged.skipped, 0),
+      warnings: Array.isArray(merged.warnings) ? merged.warnings : [],
+      customers: merged.customers
+    };
+  }
+
+  function crmSummaryToast(summary) {
+    var parts = [];
+    if (summary.added) parts.push('新增 ' + summary.added + ' 家');
+    if (summary.updated) parts.push('更新 ' + summary.updated + ' 家');
+    if (summary.linked) parts.push('关联 ' + summary.linked + ' 家');
+    if (summary.skipped) parts.push('跳过 ' + summary.skipped + ' 家');
+    var hasChanges = summary.added + summary.updated + summary.linked > 0;
+    var message = hasChanges ? '客户通同步完成：' + parts.join(' · ') : '客户通没有需要同步的新变更（已是最新）';
+    if (summary.added + summary.updated > 0) message += '；地址 / 邮箱 / 电话需在客户库手动补充';
+    toast(message, hasChanges ? 'success' : 'info', { title: '客户通同步' });
+  }
+
+  function crmRunManualSync(records, options, fromModal) {
+    if (!crmSyncState) return null;
+    var selected = Array.isArray(records) ? records : [];
+    if (!selected.length) {
+      toast('请先勾选需要同步的客户', 'warn');
+      return null;
+    }
+    crmSyncState.busy = true;
+    renderCrmSyncModal();
+    var summary = crmApplyMerge(selected, options || {});
+    if (!summary.ok) {
+      crmSyncState.busy = false;
+      crmSyncState.error = summary.message || '同步失败';
+      var host = $('#crm-sync-modal');
+      if (host) {
+        var alert = document.createElement('div');
+        alert.className = 'alert alert--danger crm-sync-error';
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = icon('alert-circle', 16) + '<span>' + esc(crmSyncState.error) + '</span>';
+        host.insertBefore(alert, host.firstChild);
+      }
+      var foot = $('.modal-foot');
+      if (foot) foot.innerHTML = crmSyncFooterHTML();
+      toast('客户通同步失败：' + (summary.message || '未知错误'), 'error');
+      return summary;
+    }
+    closeModal();
+    if (fromModal) {
+      crmSummaryToast(summary);
+      if (currentRoute.name === 'customers' || currentRoute.name === 'settings') {
+        renderRoute();
+      }
+    }
+    return summary;
+  }
+
+  function crmManualSyncSelected() {
+    if (!crmSyncState) return;
+    var candidates = crmSelectedCandidates();
+    crmRunManualSync(candidates.map(function (candidate) { return candidate.record; }), { updateExisting: crmSyncState.updateExisting }, true);
+  }
+
+  function crmManualSyncAll() {
+    if (!crmSyncState) return;
+    crmRunManualSync(crmSyncState.candidates.map(function (candidate) { return candidate.record; }), { updateExisting: crmSyncState.updateExisting }, true);
+  }
+
+  function crmAutoSync(reason) {
+    var settings = getCrmSettings();
+    if (!settings.autoSync) return null;
+    if (crmSyncing) return null;
+    var engine = crmEngineRef();
+    if (!engine || typeof engine.merge !== 'function') return null;
+    var read = readCrmSafe();
+    if (!read.available || !(read.won || []).length) return null;
+    crmSyncing = true;
+    try {
+      var summary = crmApplyMerge(read.won, { updateExisting: false });
+      if (!summary.ok) {
+        console.error('[TradeDocs] 客户通自动同步失败', summary.message);
+        return summary;
+      }
+      if (summary.added + summary.updated > 0 && !crmAutoToastShown) {
+        crmAutoToastShown = true;
+        toast('客户通自动同步：新增 ' + summary.added + ' 家已成交客户' +
+          (summary.updated ? '、更新 ' + summary.updated + ' 家' : '') +
+          '；地址 / 邮箱 / 电话可在客户库补充', 'success', { title: '客户通自动同步' });
+      }
+      var searchFocused = document.activeElement && document.activeElement.id === 'customers-search';
+      if (currentRoute.name === 'customers' && !searchFocused) {
+        refreshCrmStatusUI();
+        renderRoute();
+      } else {
+        refreshCrmStatusUI();
+      }
+      return summary;
+    } catch (err) {
+      console.error('[TradeDocs] 客户通自动同步异常', err);
+      return { ok: false, message: err && err.message ? err.message : String(err) };
+    } finally {
+      crmSyncing = false;
+    }
+  }
+
+  function crmScheduleAutoSync(reason) {
+    if (crmAutoTimer) clearTimeout(crmAutoTimer);
+    crmAutoTimer = setTimeout(function () {
+      crmAutoTimer = null;
+      crmAutoSync(reason);
+    }, CRM_AUTO_DEBOUNCE);
+  }
+
+  function installCrmAutoSyncListeners() {
+    window.addEventListener('storage', function (event) {
+      if (!event || (event.key && event.key !== CRM_STORAGE_KEY)) return;
+      crmScheduleAutoSync('storage');
+    });
+    document.addEventListener('change', function (event) {
+      var el = event.target;
+      if (!el || !el.getAttribute) return;
+      if (el.getAttribute('data-crm-setting-auto') !== null) {
+        setCrmAutoSync(!!el.checked);
+      }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible') return;
+      var now = Date.now();
+      if (now - crmLastVisibilityCheck < CRM_VISIBILITY_THROTTLE) return;
+      crmLastVisibilityCheck = now;
+      crmScheduleAutoSync('visibility');
+    });
+  }
+
+  function triggerCrmBootSync() {
+    setTimeout(function () {
+      if (getCrmSettings().autoSync) crmAutoSync('boot');
+      refreshCrmStatusUI();
+    }, 700);
+  }
+
+  function crmSettingsCardHTML() {
+    var status = crmStatusInfo();
+    var settings = getCrmSettings();
+    return sectionCard({
+      icon: 'users',
+      title: '客户通同步',
+      sub: '同浏览器 · 同域 · 只读同步「已成交」客户',
+      body: '<div class="crm-settings">' +
+        '<div class="crm-settings-row">' +
+        '<div class="crm-settings-status">' + crmStatusBadgeHTML(status) +
+        '<div class="field-hint" data-crm-sync-time>' + esc(settings.lastSyncAt ? '上次同步：' + settings.lastSyncAt.replace('T', ' ').slice(0, 16) : '尚未同步') + '</div></div>' +
+        '<div class="crm-settings-actions">' +
+        '<button class="btn btn--sm" type="button" data-action="crm-sync-now" data-testid="crm-sync-now">' + icon('refresh', 14) + '立即同步</button>' +
+        '<button class="btn btn--sm" type="button" data-action="crm-sync-open" data-testid="crm-sync-open">' + icon('users', 14) + '手动选择…</button>' +
+        '</div></div>' +
+        '<div class="crm-settings-toggle"><label class="switch"><input type="checkbox" class="checkbox" data-crm-setting-auto data-testid="crm-auto-toggle"' + (settings.autoSync ? ' checked' : '') + '><span>自动同步已成交客户</span></label>' +
+        '<span class="field-hint">自动同步只新增客户，不会覆盖手填的地址 / 邮箱 / 电话；检测到客户通数据变化后会自动导入。</span></div>' +
+        '<div class="crm-settings-note">' + icon('shield-check', 14) +
+        '<span>仅当单证通与客户通在同一浏览器、同一域名（joyzqj.github.io）下读取 localStorage；换浏览器 / 换设备 / 使用 file:// 不共享数据。读取只读、不上传外网。</span></div>' +
+        '</div>'
+    });
+  }
+
+  function crmSyncNowAction() {
+    var engine = crmEngineRef();
+    if (!engine) {
+      toast('客户通同步引擎尚未加载（js/crm-sync.js）', 'error');
+      return;
+    }
+    var read = readCrmSafe();
+    if (!read.available) {
+      toast('未检测到客户通数据：请在同一浏览器打开客户通后再试', 'warn');
+      return;
+    }
+    if (!read.won.length) {
+      toast('客户通中暂无「已成交」客户', 'info');
+      return;
+    }
+    var summary = crmApplyMerge(read.won, { updateExisting: false });
+    if (!summary.ok) {
+      toast('客户通同步失败：' + (summary.message || '未知错误'), 'error');
+      return;
+    }
+    crmSummaryToast(summary);
+    if (currentRoute.name === 'customers' || currentRoute.name === 'settings') renderRoute();
+  }
+
+  /* ================================================================
    *  Shared actions
    * ================================================================ */
 
@@ -3722,6 +4640,11 @@
     'recognize-back': recognizeBackAction,
     'recognize-apply': function () { applyRecognizeAction('current'); },
     'recognize-apply-new': function () { applyRecognizeAction('new'); },
+    'crm-sync-open': openCrmSyncModal,
+    'crm-sync-run': crmManualSyncSelected,
+    'crm-sync-all': crmManualSyncAll,
+    'crm-sync-refresh': crmRefreshModal,
+    'crm-sync-now': crmSyncNowAction,
     'regen-doc-meta': function (el) { regenerateDocMeta(el.getAttribute('data-key')); },
     'open-doc-type': function (el) { openDocTypeAction(el.getAttribute('data-key')); },
     'preview-doc': function (el) { previewAddDoc(el.getAttribute('data-key')); },
@@ -3882,6 +4805,29 @@
     },
     getOrder: function (orderId) {
       return store.getOrder(orderId);
+    },
+    syncCrmNow: function (options) {
+      var opts = options || {};
+      var engine = crmEngineRef();
+      if (!engine) return { ok: false, reason: 'engine-missing', available: false, total: 0, won: 0, added: 0, updated: 0, linked: 0, skipped: 0, warnings: [] };
+      var read = readCrmSafe();
+      if (!read.available) {
+        return { ok: false, reason: read.reason || 'unavailable', available: false, total: 0, won: 0, added: 0, updated: 0, linked: 0, skipped: 0, warnings: [] };
+      }
+      var summary = crmApplyMerge(read.won, { updateExisting: !!opts.updateExisting });
+      return {
+        ok: !!summary.ok,
+        reason: summary.ok ? '' : (summary.reason || 'sync-failed'),
+        message: summary.ok ? '' : (summary.message || ''),
+        available: true,
+        total: read.total,
+        won: read.won.length,
+        added: core.num(summary.added, 0),
+        updated: core.num(summary.updated, 0),
+        linked: core.num(summary.linked, 0),
+        skipped: core.num(summary.skipped, 0),
+        warnings: Array.isArray(summary.warnings) ? summary.warnings : []
+      };
     }
   };
 
@@ -3915,6 +4861,8 @@
       toast(notice.message, type);
     });
     store.onSaveState(function (status) { setSaveState(status); });
+    initCrmIntegration();
+    installCrmAutoSyncListeners();
     window.addEventListener('hashchange', function () {
       flushPendingEditors();
       renderRoute();
@@ -3931,6 +4879,7 @@
     }
     renderRoute();
     setSaveState('saved');
+    triggerCrmBootSync();
   }
 
   if (document.readyState === 'loading') {

@@ -36,7 +36,7 @@ LOCAL_REF_RE = re.compile(
     re.IGNORECASE,
 )
 
-EXPECTED_SCRIPTS = ["core.js", "demo.js", "recognize.js", "doc-templates.js", "store.js", "app.js"]
+EXPECTED_SCRIPTS = ["core.js", "demo.js", "recognize.js", "crm-sync.js", "doc-templates.js", "store.js", "app.js"]
 
 
 def read_text(path: Path) -> str:
