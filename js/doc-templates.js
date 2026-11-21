@@ -742,7 +742,7 @@
       ['COUNTRY OF ORIGIN', '原产国', originValue(p)],
       ['L/C ISSUING BANK', '开证银行', p.order.lcIssuingBank]
     ]);
-    var bottomMain = bankBlock(p) + declarationBlock(p, p.defaults.declaration);
+    var bottomMain = declarationBlock(p, p.defaults.declaration);
     var body =
       letterhead(p) +
       titleBlock(p) +

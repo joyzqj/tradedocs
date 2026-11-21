@@ -9,7 +9,7 @@
   var TD = root.TradeDocs = root.TradeDocs || {};
   var core = TD.core;
   var store = TD.store;
-  var APP_VERSION = '1.1.1';
+  var APP_VERSION = '1.1.2';
 
   if (!core || !store) {
     (root.console || { error: function () {} }).error('[TradeDocs] app.js requires core.js and store.js first');

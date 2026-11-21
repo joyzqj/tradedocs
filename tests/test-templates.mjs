@@ -336,11 +336,14 @@ test('§7.1 CI — commercial invoice content', () => {
     FX.buyer, FX.buyerAddr, META.ci.no, core.fmtDate(META.ci.date),
     FX.orderNo, FX.incoterm, FX.pol, FX.pod, FX.vessel, FX.voyage, FX.lcNo,
     FX.marks, FX.prod1, FX.hs1, FX.qty1, FX.unitPrice1,
-    FX.totalMoney, FX.wordsEn, FX.bankName, FX.accountNo, FX.swift,
+    FX.totalMoney, FX.wordsEn,
     FX.declaration, FX.signer
   ];
   for (const needle of required) assert.ok(hasText(html, needle), `ci: required content missing -> ${needle}`);
   for (const item of order.items) assert.ok(hasText(html, item.nameEn), `ci: item ${item.nameEn} missing`);
+  assert.ok(!/BANKING DETAILS/i.test(tagless(html)), 'ci: bank details block must be omitted per business requirement');
+  assert.ok(!hasText(html, FX.accountNo), 'ci: bank account number must not appear');
+  assert.ok(!hasText(html, FX.swift), 'ci: SWIFT code must not appear');
 });
 
 test('§7.2 PL — packing list content, and NO prices/amounts', () => {

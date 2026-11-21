@@ -267,3 +267,18 @@ node tests/e2e.mjs --full         # PASS 56/56 (42 v1.0 + 14 v1.1 recognition)
 ```
 
 **Signoff:** v1.1.1 redesign passes unit, integration, print/PDF and visual QA on frozen files — no open findings; ready for release packaging.
+
+---
+
+## v1.1.2 — 商业发票移除银行账户信息（业务变更）
+
+按业务要求，商业发票（CI）不再展示 `BANKING DETAILS` 模块；银行信息仍保留在 PI/DR 等单证。已同步更新 `docs/CONTRACT.md §7.1`、`tests/test-templates.mjs`（增加 CI 不得包含银行账号/SWIFT 的断言）、README 与版本号。
+
+复验（2026-11-22）：
+```
+node tests/test-templates.mjs   # PASS 47/47
+node tests/test-core.mjs        # PASS 119/119
+node tests/test-recognize.mjs   # PASS 48/48
+node tests/e2e.mjs --full       # PASS 56/56
+```
+E2E 打印矩阵仍为 11 类各 1 页 + SC 2 页 = 13 页；截图与 PDF 已随 E2E 重新生成。
